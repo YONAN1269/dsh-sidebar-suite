@@ -1,0 +1,7 @@
+# Edit this file with Notepad. Lines starting with # are ignored.
+# PACKAGE_NAME must match the "name" field in package.json.
+PACKAGE_NAME=dsh-sidebar-suite
+# Folder for the local .tgz installer, relative to this folder.
+PACK_OUT_DIR=dist
+# Only change this for a private registry. Public mirrors are read-only.
+NPM_REGISTRY=https://registry.npmjs.org/

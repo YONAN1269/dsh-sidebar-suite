@@ -1,0 +1,60 @@
+{
+  "name": "dsh-sidebar-suite",
+  "version": "0.1.3",
+  "license": "MIT",
+  "author": "Yonan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YONAN1269/dsh-sidebar-suite.git"
+  },
+  "homepage": "https://github.com/YONAN1269/dsh-sidebar-suite#readme",
+  "bugs": {
+    "url": "https://github.com/YONAN1269/dsh-sidebar-suite/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "让左侧栏不再抢地盘：三种布局、一键切换、零改动宿主结构，默认布局在插件详情页顶部直接设置。｜Tame the DSH sidebar: three layouts, one click, zero DOM rewrites — set your startup default right at the top of the plugin page.",
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "sidebar",
+    "layout",
+    "plugin"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./DETAIL.md": "./DETAIL.md",
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "DETAIL.md",
+    "LICENSE",
+    "assets/*.jpg",
+    "assets/*.png"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

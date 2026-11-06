@@ -1,0 +1,10 @@
+# dsh-sidebar-suite bundle patch
+#
+# This is the `dsh.bundle.patch` layer: installing the package through the
+# Plugin Manager (or `dsh plugin add`) appends the bundle to
+# `dsh.profile.bundles`, and the profile boot merges this file — a single
+# `insert` of the plugin row. Do not also keep a manual mount line in the
+# profile's own cordis.patch.yml, or the plugin loads twice.
+- insert:
+    - id: dsh-sidebar-suite
+      name: dsh-sidebar-suite
