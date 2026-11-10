@@ -9,6 +9,9 @@
 详情页长文档见 [DETAIL.md](DETAIL.md)（中英双语 / bilingual, 含收款码 / includes the payment QR）。
 The full detail document is [DETAIL.md](DETAIL.md).
 
+**一步步照着用**：[使用说明.md](使用说明.md) —— 安装、三种布局、临时会话、配置文件逐行说明、常见故障与反馈，中英双语随包附带（0.2.5 起）。
+**Step-by-step guide**: [使用说明.md](使用说明.md) — install, layouts, temp sessions, every config line, troubleshooting and feedback; shipped inside the npm package since 0.2.5.
+
 ## 这是一款什么插件 / What this plugin is
 
 **这是一款专门针对改进 DSH 左侧栏体验的插件。** 不碰会话内容、不换模型、不做独立面板、不接云端服务 —— 只把左侧栏「找得到、切得快、看着顺」这一件事做透。

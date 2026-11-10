@@ -1,6 +1,6 @@
 {
   "name": "dsh-sidebar-suite",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "license": "MIT",
   "author": "Yonan",
   "repository": {
@@ -26,6 +26,10 @@
     "plugin"
   ],
   "type": "module",
+  "scripts": {
+    "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs",
+    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/temp-session-host.mjs && npm pack --dry-run"
+  },
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -46,9 +50,13 @@
     "icon.svg",
     "README.md",
     "DETAIL.md",
+    "使用说明.md",
+    "CHANGELOG.md",
+    "screenshots.json",
     "LICENSE",
     "assets/*.jpg",
-    "assets/*.png"
+    "assets/*.png",
+    "assets/screenshots/*.png"
   ],
   "dsh": {
     "bundle": {
