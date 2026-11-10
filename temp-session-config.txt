@@ -1,0 +1,53 @@
+# 临时会话（0.2.0）· 用记事本改等号右边，保存后「完全退出并重开 DSH」才生效。
+# Temporary session (0.2.0) · edit the values after =, then FULLY QUIT and reopen DSH.
+# 等号左边和 # 开头的行不要动。Do not change the keys or the # lines.
+#
+# 说明：临时会话就是左侧栏里的一个真实 DSH 会话（用原生会话窗口），
+# 退出 DSH 时删除。DELETE_ON_EXIT=off 时不再删除，它就变成普通会话。
+# Notes: a temporary session is a REAL DSH session in the sidebar using the
+# native conversation window, deleted when you quit. DELETE_ON_EXIT=off turns
+# that off, and it becomes an ordinary session.
+
+# 是否在「新会话」按钮旁边显示「临时」按钮 / Show the Temp button beside New Session
+SHOW_TEMP_BUTTON=on
+
+# 装了「dsh-deepseek-chat（CHAT / HARNESS 切换）」时，它在 CHAT 官网模式会接管
+# 侧栏和主区域。hide = CHAT 模式自动隐藏「临时」按钮，切回 HARNESS 再出现（推荐）；
+# show = 两种模式都显示按钮。
+# Coexistence with dsh-deepseek-chat: hide = hide the Temp button while that plugin
+# is in CHAT (official website) mode, show = always show it.
+TEMP_IN_CHAT_MODE=hide
+
+# 「临时」按钮的摆法 / How the Temp button is laid out
+# pair = 和「新会话」并排（默认，会把这行稍微缩窄）
+# own  = 自己单独占一行，完全不改「新会话」的宽度（别的插件把侧栏顶部挤乱时用这个）
+# pair = beside New Session (default, narrows that row slightly)
+# own  = its own full-width row, leaves New Session untouched (use when another
+#        plugin's header row fights the pair layout)
+TEMP_BUTTON_STYLE=pair
+
+# 会话列表是否默认全部展开 / Always show every session in the sidebar
+# on  = 自动展开所有会话，并隐藏「展开其余 N 个会话」按钮（默认）
+# off = 保持 DSH 原来的折叠行为，那个按钮照常显示
+# on  = expand every group and hide the "Show N more sessions" button (default)
+# off = keep DSH's own folding and leave that button visible
+EXPAND_ALL_SESSIONS=on
+
+# 退出 DSH 时删除临时会话 / Delete temporary sessions when DSH quits
+# on  = 退出时删除（默认）；off = 不删除，临时会话就变成普通会话
+DELETE_ON_EXIT=on
+
+# 每天定时清理（和上面那条互不影响，可以同时开）/ Daily cleanup
+# on  = 每天到 SCHEDULE_TIME 时把临时会话删掉（DSH 一直开着也不会越积越多）
+# off = 不定时清理
+# on  = delete every temporary session at SCHEDULE_TIME; off = no daily cleanup
+SCHEDULE_DELETE=off
+
+# 定时清理的时间（24 小时制 HH:MM，本机时间）/ Cleanup time (24h HH:MM, local time)
+# 例：03:00 = 每天凌晨 3 点。正在使用的那个会话会跳过，5 分钟后再试一次。
+# e.g. 03:00. A session that is in use right now is skipped and retried 5 min later.
+SCHEDULE_TIME=03:00
+
+# 最多保留多少个临时会话（超出后自动删掉最早的）
+# How many temporary sessions to keep (the oldest are deleted beyond this)
+MAX_KEPT=20
