@@ -1,5 +1,10 @@
 # 侧栏布局大师 · Sidebar Suite
 
+[![npm downloads](https://img.shields.io/npm/dm/dsh-sidebar-suite)](https://www.npmjs.com/package/dsh-sidebar-suite) [![GitHub Release downloads](https://img.shields.io/github/downloads/YONAN1269/dsh-sidebar-suite/total?label=GitHub%20Release%20downloads)](https://github.com/YONAN1269/dsh-sidebar-suite/releases)
+
+> 两个数字不是一回事：左边是 **npm 近 30 天安装量**；右边是 **GitHub Release 附件的下载总数** —— GitHub 只统计这个，`git clone` 和 npm 安装都不计入。附件是 2026-11-10 才补齐的，所以右边从 0 开始，每有一次真实下载才 +1。
+> The left badge counts npm installs (last 30 days); the right one counts downloads of **attached release files only** — clones and npm installs are not included. Assets were first attached on 2026-11-10, so that number starts at zero.
+
 > 让左侧栏从「抢地盘」变成「听你的」。三种布局、一键切换、零改动宿主结构，默认布局在插件详情页顶部直接改。
 > Tame the DSH sidebar: three layouts, one click, zero DOM rewrites — set your startup default right at the top of the plugin page.
 

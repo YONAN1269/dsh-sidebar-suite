@@ -107,6 +107,16 @@ check('copy: guide discloses both defaults', guide.includes(DEF_ZH) && guide.inc
 check('client: settings card spells out the defaults',
   client.includes('退出 DSH 时删除=开，每天定时清理=关') && client.includes('delete on quit = on, daily cleanup = off'))
 
+// ---- 0.2.7: download counters must stay visible and explained -----------
+check('README: shows the npm download badge',
+  readme.includes('img.shields.io/npm/dm/dsh-sidebar-suite') && readme.includes('https://www.npmjs.com/package/dsh-sidebar-suite'))
+check('README: shows the GitHub release download badge',
+  readme.includes('img.shields.io/github/downloads/YONAN1269/dsh-sidebar-suite/total'))
+check('README: explains that GitHub only counts attached release files',
+  readme.includes('只统计') && readme.includes('git clone'))
+check('README: keeps the Releases offline-install link',
+  readme.includes('https://github.com/YONAN1269/dsh-sidebar-suite/releases'))
+
 // ---- no stale one-liner left anywhere ------------------------------------
 const stale = '三种布局把挤成一团的左侧栏理顺'
 check('copy: old one-line pitch fully retired',
