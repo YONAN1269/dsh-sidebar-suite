@@ -1,6 +1,6 @@
 {
   "name": "dsh-sidebar-suite",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "license": "MIT",
   "author": "Yonan",
   "repository": {
@@ -14,7 +14,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "description": "一款专门针对改进 DSH 左侧栏体验的插件：三种布局一键切换、默认布局在详情页顶部直接设、会话列表默认全展开、「临时会话」开原生会话且退出 / 每天定时自动删除、详情页三种反馈入口 —— 强实用性；界面沿用宿主原生配色、圆角与间距，只加属性与一条控制栏、不重构宿主结构 —— 克制美观。｜A plugin dedicated to the DSH sidebar experience: one-click layouts, always-expanded sessions, disposable native temp sessions and in-page settings/feedback — seriously practical; native colours, radii and spacing with zero host-DOM rewrites — restrained and good-looking.",
+  "description": "一款专门针对改进 DSH 左侧栏体验的插件：三种布局一键切换、默认布局在详情页顶部直接设、会话列表默认全展开、「临时会话」开原生会话且默认在退出 DSH 时删除（DELETE_ON_EXIT 默认开；每天定时清理默认关，可在详情页开启并自设时间）、详情页三种反馈入口 —— 强实用性；界面沿用宿主原生配色、圆角与间距，只加属性与一条控制栏、不重构宿主结构 —— 克制美观。｜A plugin dedicated to the DSH sidebar experience: one-click layouts, always-expanded sessions, native temp sessions deleted when DSH quits by default (DELETE_ON_EXIT on; daily cleanup off by default and opt-in) and in-page settings/feedback — seriously practical; native colours, radii and spacing with zero host-DOM rewrites — restrained and good-looking.",
   "keywords": [
     "dsh-plugin",
     "dsh",

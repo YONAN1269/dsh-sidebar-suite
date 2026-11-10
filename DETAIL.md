@@ -1,8 +1,8 @@
 # 侧栏布局大师 · Sidebar Suite
 
-> **中文**：**这是一款专门针对改进 DSH 左侧栏体验的插件。** 左侧栏里「扩展」和「工作区」永远在抢同一块高度；装了几个插件之后，找一个入口要滚半天；项目一多，扩展就被挤没。它只解决这一处，但要把它做到**既强实用、又好看**：三种布局一键切换、**默认布局就在本页最上方**、会话列表默认全部展开、临时会话用完即删；界面全程沿用宿主原生配色、圆角与间距，不另起一套皮肤。
+> **中文**：**这是一款专门针对改进 DSH 左侧栏体验的插件。** 左侧栏里「扩展」和「工作区」永远在抢同一块高度；装了几个插件之后，找一个入口要滚半天；项目一多，扩展就被挤没。它只解决这一处，但要把它做到**既强实用、又好看**：三种布局一键切换、**默认布局就在本页最上方**、会话列表默认全部展开、临时会话默认在退出 DSH 时删除（每天定时清理默认关，可在本页开启）；界面全程沿用宿主原生配色、圆角与间距，不另起一套皮肤。
 >
-> **English**: **This is a plugin dedicated to improving the DSH sidebar experience.** The panels group and the workspaces group fight for the same vertical space; once you install a few plugins, finding anything means scrolling; add more projects and the panels vanish entirely. It fixes only that one surface, but fixes it properly — **seriously practical and native-looking**: three layouts in one click, the **startup-default picker at the very top of this page**, an always-expanded session list, disposable temporary sessions, and a UI built entirely from the host's own colours, radii and spacing instead of a custom skin.
+> **English**: **This is a plugin dedicated to improving the DSH sidebar experience.** The panels group and the workspaces group fight for the same vertical space; once you install a few plugins, finding anything means scrolling; add more projects and the panels vanish entirely. It fixes only that one surface, but fixes it properly — **seriously practical and native-looking**: three layouts in one click, the **startup-default picker at the very top of this page**, an always-expanded session list, temp sessions deleted when DSH quits by default (daily cleanup off unless enabled), and a UI built entirely from the host's own colours, radii and spacing instead of a custom skin.
 
 ---
 
@@ -28,7 +28,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 - **会话与默认分离 / Session ≠ default** — 侧栏上临时换布局只影响本次会话，不写盘；只有详情页的设置会改默认值。Switching from the sidebar bar is session-only; only this page changes the startup default.
 - **零侵入 / Zero rewrites** — 只往 `<html>` 上写属性、加一条控制栏，绝不重构宿主 DOM，React 重绘后自动重新挂载，也不影响 `dsh-deepseek-chat` 这类别的插件。Only `<html>` attributes and one control bar; the host's markup is never restructured, everything re-resolves after React rebuilds, and other sidebar plugins keep working.
 - **会话不用再点「展开其余」/ No more "Show N more"** — 会话列表默认全部展开，折叠按钮也不再显示；按宿主自己的按钮展开、不改宿主 DOM。`EXPAND_ALL_SESSIONS=off` 可恢复原样。Every session is shown and the host's overflow control is hidden, driven through the host's own button; `EXPAND_ALL_SESSIONS=off` restores DSH's folding.
-- **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），退出 DSH 时或每天定时自动删除；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar, with the native window and current model/toolchain, then removes it on quit or on a daily schedule — both switches live at the top of this page.
+- **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），**默认在退出 DSH 时删除**；**每天定时清理默认关**，需要时在本页开启并设时间；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar with the native window and current model/toolchain; it is **deleted when DSH quits by default**, while the **optional daily cleanup is off by default** — both switches live at the top of this page.
 - **反馈有确定入口 / Feedback that reaches someone** — 详情页底部三个按钮：复制报告（自动带上版本、系统、布局、最近错误）、预填的 GitHub Issue、插件市场规定的评论区。Three channels at the bottom of this page, with version, OS, layout and last error already filled in.
 - **不联网 / Offline** — 收款码随插件打包由宿主本地提供，配置只落在本机 profile。The QR ships with the bundle and is served locally; config stays in your profile.
 - **中英双语 / Bilingual** — 界面文案、详情内容、设置说明全部中英对照。UI labels, this document and the settings copy are all bilingual.
@@ -100,6 +100,9 @@ For local development, point the same command at this folder or a packed `.tgz`.
 - 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计。Toggle mode hides the whole workspaces region, including anything else the host renders inside it.
 
 ## 临时会话 / Temporary session（0.2.0）
+
+> **默认行为 / Defaults**：`DELETE_ON_EXIT=on` —— 临时会话**默认在退出 DSH 时删除**；`SCHEDULE_DELETE=off` —— **每天定时清理默认关**，只有你在详情页打开它并设了时间才会按天清理。两项互不影响，可以同时开。
+> **Defaults**: temp sessions are **deleted when DSH quits by default**; **daily cleanup is off by default** and only runs after you enable it and pick a time. The two switches are independent.
 
 「临时」按钮创建的**是一个真正的 DSH 会话**，因此：在左侧栏可见、用原生会话窗口、继承当前模型和工具链、可以随意切换任务；只有「退出即删除」这一点是插件加的。
 

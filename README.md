@@ -19,7 +19,7 @@ The full detail document is [DETAIL.md](DETAIL.md).
 
 | 设计取向 / Design goal | 落在哪 / What it means |
 | --- | --- |
-| **强实用性 / Seriously practical** | 三种布局一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且退出 / 每天定时自动删除、详情页三种反馈入口 |
+| **强实用性 / Seriously practical** | 三种布局一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且**默认在退出 DSH 时删除**（`DELETE_ON_EXIT=on`；**每天定时清理默认关**，需要时在详情页开启并设时间）、详情页三种反馈入口 |
 | **美观性 / Looks native** | 颜色与层级全取宿主设计变量、深浅主题自动跟随；细字号控制栏、迷你布局示意图、「临时」用 CSS 标签不破坏行高；不重构宿主 DOM、不弹窗、不另起一套皮肤 |
 
 完整的「强实用性 / 美观性」逐条说明见 [DETAIL.md](DETAIL.md) 的「这是一款什么插件」一节。
@@ -115,6 +115,9 @@ dsh plugin --profile desktop add dsh-sidebar-suite
 
 本地开发时也可以把命令里的包名换成本目录路径，或 `pnpm pack` 产出的 `.tgz`。
 For local development, point the same command at this folder or a packed `.tgz` instead.
+
+**离线安装包 / Offline archives**：[GitHub Releases](https://github.com/YONAN1269/dsh-sidebar-suite/releases) 的每个版本都附一个 `.zip` 源码包和一个 `.tgz` npm 安装包。把 `.tgz` 下到本机后执行 `dsh plugin --profile desktop add <本地 .tgz 的完整路径>` 就能离线安装；Release 页面会显示每个附件真实的下载次数。
+Every release ships a `.zip` source archive and an npm `.tgz`; point the install command at the downloaded `.tgz` for an offline install. GitHub counts downloads of these attached files.
 
 **已在 DSH 0.2.2-rc.1（desktop profile）验证 / Tested on DSH 0.2.2-rc.1 (desktop profile).**
 本包刻意不声明 `engines.dsh`：当前 DSH 是预发布版，semver 默认规则会把常规版本范围误判为不兼容。

@@ -90,6 +90,23 @@ check('package: ships both locale files', pkg.files.includes('locale/*.json'))
 check('package: ships README for the marketplace body', pkg.files.includes('README.md'))
 check('package: ships the client bundle that renders the card', pkg.files.includes('lib/client.js'))
 
+// ---- 0.2.6: the catalog maintainer's default-behaviour disclosure --------
+// awesome-dsh-plugin PR #13993 was merged with a copy tweak: temp sessions are
+// deleted when DSH quits BY DEFAULT, while the daily cleanup is OFF by default.
+// Every surface a user reads must say the same thing — this guards against the
+// old "quit / daily auto-delete" wording that made both sound enabled.
+const DEF_ZH = '默认在退出 DSH 时删除'
+const DEF_OFF = '每天定时清理默认关'
+check('copy: npm description discloses both defaults',
+  pkg.description.includes(DEF_ZH) && pkg.description.includes(DEF_OFF) && pkg.description.includes('daily cleanup off by default'))
+check('copy: detail headline discloses both defaults',
+  zh.meta.description.includes(DEF_ZH) && zh.meta.description.includes(DEF_OFF) && en.meta.description.includes('daily cleanup off by default'))
+check('copy: DETAIL.md discloses both defaults', detail.includes(DEF_ZH) && detail.includes(DEF_OFF))
+check('copy: README discloses both defaults', readme.includes(DEF_ZH) && readme.includes(DEF_OFF))
+check('copy: guide discloses both defaults', guide.includes(DEF_ZH) && guide.includes(DEF_OFF))
+check('client: settings card spells out the defaults',
+  client.includes('退出 DSH 时删除=开，每天定时清理=关') && client.includes('delete on quit = on, daily cleanup = off'))
+
 // ---- no stale one-liner left anywhere ------------------------------------
 const stale = '三种布局把挤成一团的左侧栏理顺'
 check('copy: old one-line pitch fully retired',
