@@ -111,7 +111,11 @@ function buildClient(overrides) {
   }
   mod.apply(ctx)
   const service = published.sidebarSuite || sandbox.window.__dshSidebarSuite
-  return { tree, service }
+  const css = doc.head.children
+    .filter((el) => el.tagName === 'STYLE')
+    .map((el) => el.textContent)
+    .join('\n')
+  return { tree, service, css }
 }
 
 function tags(root) {
@@ -142,6 +146,22 @@ async function main() {
   check('source: keeps the region-parent fallback when no nav matches',
     /regionArea\.parentElement/.test(client))
 
+  // ---- grid-based sidebar roots (rc.2) -----------------------------------
+  // rc.2 renders div.wtg9ga_scrollArea as a CSS grid with explicit columns
+  // ("4px 264px 6px" on the real renderer) and pins the host panels to
+  // column 2. An injected child with grid-column:auto lands in the 4px first
+  // column, so the control bar is 4px wide and its buttons overflow on top of
+  // the host's "工作区" heading. All three injected surfaces must span the
+  // grid; the property is inert on older flex-column roots.
+  const gridRule = client.match(/\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{([^}]*)\}/)
+  check('source: bar, tab strip and tab panel share one grid spanning rule', !!gridRule)
+  check('source: the spanning rule uses grid-column:1/-1',
+    !!(gridRule && /grid-column:\s*1\s*\/\s*-1/.test(gridRule[1])))
+  check('source: the spanning rule keeps injected boxes inside the column',
+    !!(gridRule && /min-width:\s*0/.test(gridRule[1]) && /max-width:\s*100%/.test(gridRule[1])))
+  check('source: the spanning rule restores the host grid edge columns',
+    !!(gridRule && /padding-left:\s*4px/.test(gridRule[1]) && /padding-right:\s*6px/.test(gridRule[1])))
+
   // ---- live: real rc.2 markup -------------------------------------------
   const rc2 = await variant('rc.2', {})
   check('rc.2: sidebarSuite service is published', !!(rc2 && rc2.service), rc2 && rc2.tags.join(','))
@@ -153,6 +173,8 @@ async function main() {
       && rc2.tags.indexOf('nav') > rc2.tags.indexOf('tabs')), rc2 && rc2.tags.join(','))
   check('rc.2: host groups are preserved', !!(rc2 && rc2.tags.includes('nav') && rc2.tags.includes('region')),
     rc2 && rc2.tags.join(','))
+  check('rc.2: the injected stylesheet really contains the grid spanning rule',
+    !!(rc2 && /\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{grid-column:1\/-1/.test(rc2.css)))
 
   // ---- live: a different CSS-module hash prefix --------------------------
   const rehash = await variant('rehashed', {
