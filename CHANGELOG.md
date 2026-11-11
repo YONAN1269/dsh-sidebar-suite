@@ -8,6 +8,18 @@
 
 ---
 
+## 未发布 / Unreleased — 折叠分组时控制栏不再跳到列表下方（2026-11-12）
+
+> ⚠️ **npm 上的 `0.4.1` 不含这个修复。** 以下改动目前只在本地仓库与本机 `link:` 开发版里；外部用户要等下一个发布版本。The published 0.4.1 does not contain this fix yet.
+
+- **问题**：在布局 A 下点右侧那两个「收起扩展 / 收起工作区」箭头后，控制栏会从侧栏上方**跳到列表下方**。展开时又回到上方，来回跳，交互很别扭。The layout toolbar jumped below the list whenever a group was folded.
+- **根因**：宿主折叠时会把 `nav.panelList` 与工作区容器**重挂到深一层的分组容器**里。`resolveSidebar()` 原本把「恰好包含 nav 的那一层」当 `root`，于是 `root` 在展开 / 折叠两种状态下不是同一个元素；`ensureBar()` 发现控制栏不在新 `root` 里，就把它搬进那个更深的容器（旧的兜底分支还会直接 `appendChild` 到末尾）。Folding re-parents the host panels one level deeper; the resolver picked that layer as the root, so the bar was moved into it.
+- **修法**：`root` 固定为**最外层的 `scrollArea` 滚动容器**（只匹配 `scrollArea` 这个语义后缀，不硬编码 CSS-module 哈希前缀），它在各种折叠状态下都是同一个元素；控制栏恒为该 `root` 的第一个子节点，正常重绘**完全不改动 DOM**（不会重演 0.3.0 的观察器自激）。另外给控制栏 / 页签条 / 插件面板加 `order:-30/-20/-10`，即便宿主又重排了面板，这三块也始终占据最前面的视觉行；`order` 在旧版 flex 侧栏里同样生效且顺序不变。The root is pinned to the outer scroll container, the bar is always its first child, and negative `order` keeps all three injected boxes above the host panels.
+- **三方插件面板的兜底**：`root` 上移到滚动容器后，宿主面板不再是它的直接子节点，`placeTabPanel()` 原来的 `appendChild` 会把插件页丢到整列末尾；现在改为紧跟在页签条 / 控制栏之后。A plugin page now stays directly under the header instead of falling to the bottom.
+- **验证**：新增 `tests/test_035.mjs`（19 项），用真实 `lib/client.js` 复现「宿主把 nav 与工作区重挂进 wrapper」这一变化。**把代码临时回退到 0.4.1 跑同一套测试，6 项行为断言失败**（`bar` 被搬进 `wrapper`、索引 `0 → -1`），修复后全过；另含 20 次观察器驱动重绘不新增节点、不改变控制栏位置。`npm test` 扩为 13 套。
+
+---
+
 ## 0.4.1 — 适配 DSH 0.2.2-rc.2 的网格侧栏 / Fit the rc.2 grid sidebar（2026-11-12）
 
 **这次改了客户端样式表（`lib/client.js`）**，所以**升级后要托盘退出 DSH 再重开一次**；刷新 / 热重载不算。This release changes the injected stylesheet; quit DSH from the tray and reopen once after upgrading.
