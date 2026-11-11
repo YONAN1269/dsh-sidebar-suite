@@ -7,10 +7,11 @@
 // injected, third-party tab registration worked, the host config route
 // answered 200, and the root child order stayed stable across samples.
 //
-// No runtime change was needed. This suite pins that contract so a future DSH
-// rebuild (which changes the CSS-module hash prefix) cannot silently break the
-// sidebar: it proves the client keys off semantic suffixes and the workspaces
-// slot, never off a full generated class name.
+// The markup contract did NOT change -- but the layout model did: rc.2 made
+// the scroll root a three-column CSS Grid, so 0.4.1 spans every column for
+// the injected boxes. This suite pins both halves: the client keys off
+// semantic suffixes and the workspaces slot (never a generated class name),
+// and the stylesheet carries the grid spanning rule.
 import fs from 'node:fs'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
@@ -165,7 +166,10 @@ async function main() {
   // ---- live: real rc.2 markup -------------------------------------------
   const rc2 = await variant('rc.2', {})
   check('rc.2: sidebarSuite service is published', !!(rc2 && rc2.service), rc2 && rc2.tags.join(','))
-  check('rc.2: service version is 0.4.0', !!(rc2 && rc2.service && rc2.service.version === '0.4.0'))
+  const reportedVersion = (client.match(/var VERSION = '([^']+)'/) || [])[1]
+  check('rc.2: service version matches the bundle VERSION',
+    !!(rc2 && rc2.service && rc2.service.version === reportedVersion),
+    rc2 && rc2.service && rc2.service.version)
   check('rc.2: control bar and tab strip are injected into the scroll root',
     !!(rc2 && rc2.tags.includes('bar') && rc2.tags.includes('tabs')), rc2 && rc2.tags.join(','))
   check('rc.2: bar and strip sit before the panels nav',

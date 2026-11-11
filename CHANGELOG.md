@@ -1,18 +1,20 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`）。
-> ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节第一条）。请升级到 `0.4.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.4.0 or later.
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`）。
+> ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.4.1` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.4.1 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
 
-## 未发布 / Unreleased — 适配 DSH 0.2.2-rc.2 的网格侧栏（2026-11-12）
+## 0.4.1 — 适配 DSH 0.2.2-rc.2 的网格侧栏 / Fit the rc.2 grid sidebar（2026-11-12）
 
-> ⚠️ **npm 上的 `0.4.0` 不含这个修复。** 以下改动目前只在本地仓库与本机 `link:` 开发版里；外部用户要等下一个发布版本。The published 0.4.0 does not contain this fix yet.
+**这次改了客户端样式表（`lib/client.js`）**，所以**升级后要托盘退出 DSH 再重开一次**；刷新 / 热重载不算。This release changes the injected stylesheet; quit DSH from the tray and reopen once after upgrading.
 
-- **修正上面 0.4.0 章节里「rc.2 运行时零改动」的结论**：DOM 契约（类名、`data-slot`、节点顺序）确实没变，但**布局容器变了** —— rc.2 把 `div.wtg9ga_scrollArea` 从纵向 flex 改成了 CSS Grid（真机实测列宽 `4px 264px 6px`），并把宿主的面板显式钉在第 2 列。当时只验了节点是否注入，没验几何，所以漏掉了这一层。The class names were unchanged, but the host switched its sidebar root from a flex column to a grid.
+> ⚠️ **npm 上的 `0.4.0` 不含这个修复。** 如果你在 DSH `0.2.2-rc.2` 上看到布局按钮压住「工作区」标题，请升级到 `0.4.1`。The published 0.4.0 does not contain this fix; upgrade to 0.4.1 if the layout buttons overlap the "Workspaces" heading on DSH 0.2.2-rc.2.
+
+- **修正下面 0.4.0 章节里「rc.2 运行时零改动」的结论**：DOM 契约（类名、`data-slot`、节点顺序）确实没变，但**布局容器变了** —— rc.2 把 `div.wtg9ga_scrollArea` 从纵向 flex 改成了 CSS Grid（真机实测列宽 `4px 264px 6px`），并把宿主的面板显式钉在第 2 列。当时只验了节点是否注入，没验几何，所以漏掉了这一层。The class names were unchanged, but the host switched its sidebar root from a flex column to a grid.
 - **修复控制栏压住「工作区」标题** — 插件注入的控制栏 / 页签条 / 插件面板用默认 `grid-column:auto` 落进只有 4px 宽的第 1 列，按钮溢出后盖到宿主「工作区」标题上，右侧还留下一条孤零零的竖分隔线。现在三者统一 `grid-column:1/-1` 独占整行，并把 grid 的 4px / 6px 装饰列还原成左右内边距，与宿主「新会话」按钮对齐。`grid-column` 在旧版 flex 侧栏里是惰性属性，老宿主不受影响。Spanning every column gives each injected header its own full-width row; the property is inert on older flex roots.
 - **验证** — CDP 真机 14 项验收全通过：控制栏从 4px 恢复到 274px、`scrollWidth === clientWidth`、布局按钮与「工作区」标题的重叠面积为 0、注册第三方 tab 后页签条与面板都是全宽、dispose 后无残留、root 子节点顺序不变。`tests/test_034.mjs` 扩为 20 项，新增源码与运行时样式表断言，防止以后有人删掉这条规则。全套测试与 `npm run check` 全绿。
 

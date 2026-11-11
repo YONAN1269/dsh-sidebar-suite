@@ -313,6 +313,16 @@ check('docs: changelog records the notification fix',
 // 0.4.0 — the temp-session row menu. The three user-facing documents each have
 // to mention it, and the changelog has to own a section for the version.
 check('docs: changelog has a 0.4.0 section', /^## 0\.4\.0/m.test(changelog))
+
+// 0.4.1 — the rc.2 grid fix has its own section, and the user-facing docs
+// must no longer claim that rc.2 needed "zero runtime change".
+check('docs: changelog has a 0.4.1 section', /^## 0\.4\.1/m.test(changelog))
+check('docs: README explains the rc.2 grid adaptation',
+  /grid-column:1\/-1/.test(readme) && /CSS Grid/.test(readme))
+check('docs: the Chinese guide points rc.2 + 0.4.0 users at 0.4.1',
+  /v0\.4\.1/.test(guide) && /压住「工作区」标题/.test(guide))
+check('docs: no stale "zero runtime change" claim survives',
+  !/运行时零改动即兼容/.test(readme) && !/插件运行时无需改动/.test(guide))
 check('docs: README documents the right-click menu', /保留为正式会话/.test(readme))
 check('docs: DETAIL explains why the handler does not touch other rows',
   /preventDefault/.test(detail) && /只拦自己的行/.test(detail))

@@ -174,7 +174,7 @@ For local development, point the same command at this folder or a packed `.tgz` 
 Every release ships a `.zip` source archive and an npm `.tgz`; point the install command at the downloaded `.tgz` for an offline install. GitHub counts downloads of these attached files.
 
 **已在 DSH 0.2.2-rc.2（desktop profile）真机验证 / Tested on DSH 0.2.2-rc.2 (desktop profile).**
-2026-11-12 用 CDP 连上真机复核：服务发布、`[data-slot="sidebar.workspaces"]` 与 `nav.wtg9ga_panelList` 解析、控制栏 / 页签条 /「临时」按钮注入、第三方 tab 注册与懒挂载、Host 配置路由返回 200、root 子节点顺序稳定 —— **运行时零改动即兼容**。`0.2.2-rc.1` 也兼容，但已是旧版本。Verified against a live 0.2.2-rc.2 renderer; no runtime change was needed, and 0.2.2-rc.1 remains compatible but is superseded.
+2026-11-12 用 CDP 连上真机复核：服务发布、`[data-slot="sidebar.workspaces"]` 与 `nav.wtg9ga_panelList` 解析、控制栏 / 页签条 /「临时」按钮注入、第三方 tab 注册与懒挂载、Host 配置路由返回 200、root 子节点顺序稳定 —— **DOM 契约未变**。但 rc.2 把侧栏根节点从纵向 flex 换成了 CSS Grid（列宽 `4px 264px 6px`），只验节点是否注入、不验几何就会漏掉布局重叠：**0.4.1 已让注入的控制栏 / 页签条 / 插件面板 `grid-column:1/-1` 独占整行**。`0.2.2-rc.1` 也兼容（该属性在旧 flex 根上是惰性的），但已是旧版本。Verified against a live 0.2.2-rc.2 renderer: the markup contract is unchanged, but the host switched its sidebar root to CSS Grid, which 0.4.1 now spans correctly. The property is inert on the older flex root, so 0.2.2-rc.1 remains compatible but is superseded.
 本包刻意不声明 `engines.dsh`：当前 DSH 是预发布版，semver 默认规则会把常规版本范围误判为不兼容。
 This bundle deliberately omits `engines.dsh`: DSH is currently a prerelease, and semver's default rules would reject any ordinary range.
 

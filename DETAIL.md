@@ -137,6 +137,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 ## 已知限制 / Known limits
 
 - `[data-slot="sidebar.workspaces"]` 与 `panelList` 是宿主的半稳定约定；若宿主改版，插件会退化成「有控制栏但无效果」而不是抛错。**0.2.2-rc.2 实测**：根节点 `wtg9ga_scrollArea`、扩展面板 `nav.wtg9ga_panelList`、工作区容器 `wtg9ga_regionArea` —— CSS-module 哈希前缀 `wtg9ga_` 会在 DSH 重新构建时变，插件只匹配 `panelList` 这个语义后缀与上面那个 `data-slot`，从不硬编码完整类名；`tests/test_034.mjs` 会验证换哈希、纯哈希类名、以及缺少 workspaces 插槽时的行为。These host markup contracts are semi-stable; a host change degrades gracefully instead of throwing. On 0.2.2-rc.2 the real classes are `wtg9ga_scrollArea` / `nav.wtg9ga_panelList` / `wtg9ga_regionArea`; only the semantic suffix and the slot are matched, never the generated prefix.
+- **侧栏根节点可能是 flex，也可能是 grid（0.4.1）** — 0.2.2-rc.2 把 `wtg9ga_scrollArea` 从纵向 flex 改成三列 CSS Grid（`4px 264px 6px`），宿主的面板被显式钉在第 2 列。插件注入的控制栏 / 页签条 / 插件面板不声明 `grid-column`，就会默认落进只有 4px 宽的第 1 列，按钮溢出后盖住「工作区」标题。适配方式是三者统一 `grid-column:1/-1` 独占整行，再用 `padding-left:4px` / `padding-right:6px` 把装饰列还原成内边距、与宿主「新会话」左对齐 —— **不改宿主节点、不依赖生成类名、不做宿主版本嗅探**；`grid-column` 在旧 flex 根上是惰性属性，所以同一份样式两代宿主都能用。The host root may be a flex column (rc.1) or a three-column grid (rc.2); one spanning rule covers both without version sniffing, and the property is inert on older roots.
 - 浮层定位依赖 `:has()`，需要 Chromium 内核（DSH 桌面端即是）。Overlay positioning uses `:has()`, so it needs a Chromium-based client.
 - 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计。Toggle mode hides the whole workspaces region, including anything else the host renders inside it.
 
