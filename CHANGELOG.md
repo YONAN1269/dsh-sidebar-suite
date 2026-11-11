@@ -1,9 +1,24 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`）。
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
+
+---
+
+## 0.4.0 — 临时会话可以「转正」或「立即删除」/ Promote or delete a temp session（2026-11-11）
+
+**这次改了运行时代码**（`lib/client.js` 与宿主半 `lib/temp-session-host.mjs`），所以**升级后要托盘退出 DSH 再重开一次**。This release touches both halves; quit DSH from the tray and reopen once after upgrading.
+
+- **右键临时会话行，弹出「保留为正式会话 / 立即删除」** — 之前临时会话是「要么全删，要么全留」：想留下某一个，只能去把 `DELETE_ON_EXIT` 关掉，结果**所有**临时会话都变成永久。现在单个会话可以就地处理。Right-clicking a temporary row now offers both options, so one session no longer forces a global setting.
+- **只接管临时会话那一行** — 右键普通会话行时插件**完全不碰事件**（不 `preventDefault`、不 `stopPropagation`），宿主或别的插件的右键菜单照常工作。The handler never touches rows it does not own.
+- **「保留为正式会话」后端零改动** — 走的是 0.2.0 就有的 `POST /api/dsh-temp-session.untrack`，只是过去没有入口。Promotion reuses the existing untrack route.
+- **「立即删除」新增一个路由** — `POST /api/dsh-temp-session.remove?sessionId=…`，复用 `purgeAll` 的删除与兜底：先删目录，确认真的没了；文件被占用就先从列表隐藏（`archiveSession`），下次启动再删；**删不掉就仍然留在 tracked 里**，保证下次启动会重试，而不是悄悄变成一个点不开的幽灵。A new single-id route reuses the same delete/hide/retry ladder as the bulk cleanup.
+- **这条路由只接受「临时会话」** — 命中 `state.tracked` 之外的 id 直接拒绝，且在任何文件操作之前拒绝。它能从页面调到，所以绝不能变成「按 id 删任意会话」的接口。It refuses anything outside the tracked set, before touching the filesystem.
+- **菜单本身** — 顶部一行是被右键那一行的标题（截断 48 字，因为会话标题由宿主拥有），下面两个动作各带一句后果说明；靠近视口右/下边缘会自动翻转回界内；`Esc` 关闭并把焦点还给那一行、方向键在两项间移动、点菜单外 / 滚动 / 改窗口大小都会关掉。The menu echoes the row title, explains each consequence, flips near viewport edges, and closes on Esc, outside click, scroll or resize.
+- **`TEMP_ROW_MENU=on` 新开关** — 万一和别的插件抢右键菜单，把它改成 `off` 即可（详情页也有同一个开关，不用手改文件）。A new switch, also exposed on the detail page, in case another plugin owns the context menu.
+- **测试** — 新增 `tests/test_032.mjs`（60 项）：跑真实 `lib/client.js`，按宿主的方式造出 `data-row-key="session:<id>"` 行，然后像用户那样右键、点动作、按 Esc、点外部；覆盖「非临时行完全不被拦截」「保留后属性消失」「删除后调用正确的路由」「文件被占用时提示隐藏而非删除」「失败不吞掉」以及尺寸翻转。顺手把 DOM 桩抽成 `tests/dom-stub.mjs`，由 `test_031` 与 `test_032` 共用（`test_031` 仍是 53 项）。`npm test` 链扩为 10 套。One new suite drives the real bundle against fabricated session rows and clicks through the menu; the fake DOM is now shared by both rendering suites.
 
 ---
 

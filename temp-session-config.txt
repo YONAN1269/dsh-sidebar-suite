@@ -33,6 +33,13 @@ TEMP_BUTTON_STYLE=pair
 # off = keep DSH's own folding and leave that button visible
 EXPAND_ALL_SESSIONS=on
 
+# 右键临时会话时，是否弹出「保留为正式会话 / 立即删除」菜单 / Right-click menu
+# on  = 弹出（默认）。选「保留为正式会话」后，这个会话就不再算临时，退出时不会删。
+# off = 不接管右键菜单（别的插件抢右键时用这个）
+# on  = show the menu (default). "Keep as a normal session" makes it permanent.
+# off = leave the context menu alone (use this if another plugin owns it)
+TEMP_ROW_MENU=on
+
 # 退出 DSH 时删除临时会话 / Delete temporary sessions when DSH quits
 # on  = 退出时删除（默认）；off = 不删除，临时会话就变成普通会话
 DELETE_ON_EXIT=on

@@ -157,7 +157,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 **为什么删除是安全的**：`dsh-session-query-sqlite` 的 `_reconcile()` 会拿「磁盘上实际存在的会话」和索引行对比，多出来的行直接 `persistentDeletes`，因此删目录之后搜索索引会自愈，不会留下点不开的幽灵会话。
 
-配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 8 项都能在详情页设**，用记事本改等号右边也行，保存后约 3 秒自动生效，不用重启。
+配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `TEMP_ROW_MENU` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 9 项都能在详情页设**，用记事本改等号右边也行，保存后约 3 秒自动生效，不用重启。
 
 **详情页设置（0.2.2）**：插件详情页顶部卡片新增「临时会话自动删除」区块 —— 「退出 DSH 时删除」和「每天定时清理 + 时间」两个独立开关。它不走 `configForms`，而是 `GET/POST /api/dsh-temp-session.config` 交给 Host 半执行，因为**只有一个数据源**：`temp-session-config.txt`。Host 半按行替换（`KEY=value` 只换 `= ` 右边），注释、空行、键顺序原样保留，用户手写的内容不会丢；缺失的键追加到末尾。保存后立即 `restartScheduler()`，无需重启。
 
@@ -171,12 +171,29 @@ For local development, point the same command at this folder or a packed `.tgz`.
 - 退出删除（`DELETE_ON_EXIT`）不受 `skipActiveMs` 保护：退出本身就是用户要求清理，而且进程马上消失，没有「下次再说」的机会。
 - 两个开关互相独立，可以同时开：白天不关 DSH 的人要「每晚 3 点清」，每天关机的人要「退出即清」。
 
+**单条转正 / 立即删除（0.4.0）**
+
+之前临时会话是「要么全删、要么全留」：想留下某一个，只能关掉 `DELETE_ON_EXIT`，代价是**所有**临时会话一起变成永久。0.4.0 补上了单行入口 —— 右键带「临时」标签的会话行。
+
+四个设计取舍：
+
+- **入口用右键，不在行里加按钮**。会话行由 React 拥有，往里塞节点会被下一次重渲染清掉；`data-dsbs-temp-row` 是属性，`applyTempRows()` 随时能补回来，节点不行。右键是零 DOM 侵入的入口。
+- **只拦自己的行**。`onTempContextMenu` 先解析 `data-row-key`，id 不在 `tempIds` 里就直接 `return`，`preventDefault()` 根本不会执行。所以宿主或别的插件的右键菜单在普通会话上照常工作 —— 这是这条功能唯一的兼容性风险，用「不碰」消掉它。真撞上了还有 `TEMP_ROW_MENU=off` 整条让出。
+- **「保留」复用已有后端**。0.2.0 起就有 `POST /api/dsh-temp-session.untrack`，只是当时没有 UI 入口。所以转正是纯前端改动，Host 半一行没动。
+- **「删除」新增路由，且只能删 tracked**。`POST /api/dsh-temp-session.remove?sessionId=…` 走 `removeOne()`：先 `removeSession()` 删目录，再用 `sessionDirsSync()` 确认真的空了；没删掉就 `hideSession()` 归档隐藏。关键在**只接受 `state.tracked` 里的 id，且在调用任何文件操作之前就拒绝** —— 这条路由能从页面调到，不能变成「按 id 删任意会话」的通用删除接口。删除失败时不从 tracked 移除，下次启动继续重试（与 `purgeAll` 一致），否则会留下「已经不算临时、却还在磁盘上」的孤儿。
+
+菜单本身：`role="menu"` + `role="menuitem"`，首项自动获得焦点；方向键在两项间循环，`Esc` 关闭并把焦点还给那一行，点外部 / `scroll` / `resize` 都会关闭（菜单是 `position:fixed`，不关就会飘在错误的行旁边）。视口边缘翻转用 `getBoundingClientRect()` 实测，读不到时退回 `offsetWidth`/`offsetHeight` 与保守的 220×96。
+
+Plain English: right-clicking a temporary row opens a two-item menu. "Keep" simply calls the untrack route that has existed since 0.2.0; "Delete now" goes through a new single-id route that refuses anything outside the tracked set before touching the filesystem, hides the row when a file is locked, and keeps the id tracked so the next launch retries. The menu never touches rows this plugin does not own.
+
 **限制 / Limits**
 
 - 退出前会话仍写在磁盘上（原生窗口的前提）。
 - 强杀 DSH 时退出钩子来不及跑，残留会话在下一次启动时删除。
 - 文件被占用导致删不掉时，先归档隐藏，下一次启动再删。
 - CHAT 官网模式下临时按钮默认隐藏（那条链路是 DeepSeek 网页账号，和 DSH 会话不是一回事）；`TEMP_IN_CHAT_MODE=show` 可强显，`TEMP_BUTTON_STYLE=own` 可完全避开与侧栏顶部控件的抢位。
+- 右键菜单只作用于**临时会话行**。若另一个插件也接管了这些行的右键，把 `TEMP_ROW_MENU` 改成 `off` 让出位置（详情页有同一个开关）。
+- 菜单动作是异步的：点「立即删除」后，行从列表里消失要等宿主自己刷新（插件会尝试调 `uiWorkspace().sessions.reload/refresh/invalidate`，没有这个 API 时静默跳过）。
 
 **侧栏顶部按钮的 DOM 约束（0.2.1）**：`dsh-deepseek-chat` 的侧栏适配器（`lib/client.js` 里的 `attachSidebarAdapter`）会从 `sidebar.brand.name` 插槽往上走五层，然后要求侧栏根节点下 `<button>` 子元素**恰好 1 个**（`controls()` 里的 `buttons.length === 1 && buttons[0] === row.nextElementSibling`）。0.2.0 把「临时」按钮作为根节点的第 2 个 `<button>` 插进去，适配器直接 `return null`，于是它在切换器下渲染「当前侧栏不兼容：顶部新会话仍使用 HARNESS」并且不再接管「新会话」。0.2.1 把按钮装进 `[data-dsbs-temp-slot]`（`<div>`），根节点的 `<button>` 计数回到 1，适配器恢复。回归测试见 `_probe/chat-compat.mjs`：它从插件 bundle 里抽出真实的 `attachSidebarAdapter` 跑一遍假 DOM。
 

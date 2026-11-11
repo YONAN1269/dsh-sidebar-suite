@@ -310,6 +310,17 @@ check('docs: README says a built-in click notifies subscribers too',
 check('docs: changelog records the notification fix',
   /点了内置页签也会通知订阅者/.test(changelog))
 
+// 0.4.0 — the temp-session row menu. The three user-facing documents each have
+// to mention it, and the changelog has to own a section for the version.
+check('docs: changelog has a 0.4.0 section', /^## 0\.4\.0/m.test(changelog))
+check('docs: README documents the right-click menu', /保留为正式会话/.test(readme))
+check('docs: DETAIL explains why the handler does not touch other rows',
+  /preventDefault/.test(detail) && /只拦自己的行/.test(detail))
+check('docs: the Chinese guide tells the user where to right-click',
+  /右键那个带「临时」标签的会话/.test(guide))
+check('docs: the guide lists the real line number of TEMP_ROW_MENU',
+  /\| \*\*41\*\* \| `TEMP_ROW_MENU=on`/.test(guide))
+
 console.log('')
 if (fail > 0) {
   console.log(pass + ' passed, ' + fail + ' failed')

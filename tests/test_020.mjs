@@ -48,10 +48,10 @@ const { createTempSessionHost } = await import(pathToFileURL(ROOT + '/lib/temp-s
 const host = createTempSessionHost(hostCtx)
 host.register(hostCtx)
 
-check('host: 7 routes registered', host.state.routes.registered === 7, host.state.routes)
+check('host: 8 routes registered', host.state.routes.registered === 8, host.state.routes)
 check('host: no route errors', host.state.routes.errors.length === 0, host.state.routes.errors)
 host.register(hostCtx)
-check('host: re-register keeps 7 routes (idempotent)', host.state.routes.registered === 7, host.state.routes.registered)
+check('host: re-register keeps 8 routes (idempotent)', host.state.routes.registered === 8, host.state.routes.registered)
 check('host: config parsed', host.state.config.found === true && host.state.config.deleteOnExit === true && host.state.config.maxKept === 20, host.state.config)
 check('host: button style defaults to pair', host.state.config.buttonStyle === 'pair', host.state.config.buttonStyle)
 
