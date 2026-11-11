@@ -1,16 +1,19 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`）。
+> **`0.4.0` 是本地开发版本，尚未发布到 npm**（`npm view dsh-sidebar-suite version` 仍为 `0.3.0`）；下面的 0.4.0 章节描述的是待发布内容。`0.4.0` is an unpublished local build.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
 
-## 0.4.0 — 临时会话可以「转正」或「立即删除」/ Promote or delete a temp session（2026-11-11）
+## 0.4.0 — 临时会话可以「转正」或「立即删除」/ Promote or delete a temp session（2026-11-11，**待发布 / unpublished**）
 
 **这次改了运行时代码**（`lib/client.js` 与宿主半 `lib/temp-session-host.mjs`），所以**升级后要托盘退出 DSH 再重开一次**。This release touches both halves; quit DSH from the tray and reopen once after upgrading.
 
+- **⛔ 修复启动死循环（严重，0.3.0 起就有）** — 0.3.0 的页签条插在控制栏与宿主「扩展」面板之间，但 `ensureBar()` 仍要求控制栏的 `nextSibling` 就是那个面板，于是每次 `paint()` 把控制栏搬一次、`ensureTabStrip()` 又搬回来；root 的 childList 变化触发插件自己的 `MutationObserver` → `scheduleSync()` → `paint()`，微任务队列永不排空。表现是**渲染进程 100%、主窗口隐藏、停在 `Loading plugins…`，整个 DSH 打不开**。修复后位置判断改成「顺序在前」而不是「紧邻」，`ensureTabStrip()` 同理；并加了一道「同一宏任务内最多 16 次 sync」的熔断，将来任何重绘自激也不会再把应用锁死。三种布局、以及插件页签接管侧栏的场景都做了真机验收（窗口正常、CDP 秒回、root 子节点顺序 4 次采样不变、8 秒内各进程 CPU 增量 ≤ 0.17s）。**注意：npm 上已发布的 `0.3.0` 带这个缺陷，必须发修复版并弃用 `0.3.0`。** The 0.3.0 tab strip sat between the control bar and the panels nav while `ensureBar()` still demanded adjacency, so every repaint moved the bar and fired the plugin's own observer — an endless microtask loop that hid the window on "Loading plugins…". Position checks now compare order instead of adjacency, plus a per-macrotask sync cap. The published 0.3.0 is affected and needs a fixed release.
+- **测试** — 新增 `tests/test_033.mjs`（13 项）：让 DOM 桩真的把 `MutationObserver` 回调投递回来，一次普通的宿主 DOM 变化就会复现自激。修复前 6 项失败（撞上 200 次变更上限，三种布局全部中招），修复后每次重绘 0 次 root 变更、节点顺序不变。`npm test` 链扩为 11 套。A new suite delivers observer callbacks the way a browser does; the old code spins past a 200-mutation cap, the fixed code settles on zero mutations.
 - **右键临时会话行，弹出「保留为正式会话 / 立即删除」** — 之前临时会话是「要么全删，要么全留」：想留下某一个，只能去把 `DELETE_ON_EXIT` 关掉，结果**所有**临时会话都变成永久。现在单个会话可以就地处理。Right-clicking a temporary row now offers both options, so one session no longer forces a global setting.
 - **只接管临时会话那一行** — 右键普通会话行时插件**完全不碰事件**（不 `preventDefault`、不 `stopPropagation`），宿主或别的插件的右键菜单照常工作。The handler never touches rows it does not own.
 - **「保留为正式会话」后端零改动** — 走的是 0.2.0 就有的 `POST /api/dsh-temp-session.untrack`，只是过去没有入口。Promotion reuses the existing untrack route.
