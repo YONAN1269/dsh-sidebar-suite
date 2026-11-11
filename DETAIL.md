@@ -126,8 +126,8 @@ export function apply(ctx) {
 dsh plugin --profile desktop add dsh-sidebar-suite
 ```
 
-本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.1（desktop profile）** 验证。
-For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.1 (desktop profile)**.
+本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.2（desktop profile）** 真机验证；`0.2.2-rc.1` 同样兼容但已过时。
+For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.2 (desktop profile)**; 0.2.2-rc.1 still works but is superseded.
 
 **升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
@@ -136,7 +136,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 ## 已知限制 / Known limits
 
-- `[data-slot="sidebar.workspaces"]` 与 `panelList` 是宿主的半稳定约定；若宿主改版，插件会退化成「有控制栏但无效果」而不是抛错。These host markup contracts are semi-stable; a host change degrades gracefully instead of throwing.
+- `[data-slot="sidebar.workspaces"]` 与 `panelList` 是宿主的半稳定约定；若宿主改版，插件会退化成「有控制栏但无效果」而不是抛错。**0.2.2-rc.2 实测**：根节点 `wtg9ga_scrollArea`、扩展面板 `nav.wtg9ga_panelList`、工作区容器 `wtg9ga_regionArea` —— CSS-module 哈希前缀 `wtg9ga_` 会在 DSH 重新构建时变，插件只匹配 `panelList` 这个语义后缀与上面那个 `data-slot`，从不硬编码完整类名；`tests/test_034.mjs` 会验证换哈希、纯哈希类名、以及缺少 workspaces 插槽时的行为。These host markup contracts are semi-stable; a host change degrades gracefully instead of throwing. On 0.2.2-rc.2 the real classes are `wtg9ga_scrollArea` / `nav.wtg9ga_panelList` / `wtg9ga_regionArea`; only the semantic suffix and the slot are matched, never the generated prefix.
 - 浮层定位依赖 `:has()`，需要 Chromium 内核（DSH 桌面端即是）。Overlay positioning uses `:has()`, so it needs a Chromium-based client.
 - 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计。Toggle mode hides the whole workspaces region, including anything else the host renders inside it.
 
@@ -147,7 +147,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 「临时」按钮创建的**是一个真正的 DSH 会话**，因此：在左侧栏可见、用原生会话窗口、继承当前模型和工具链、可以随意切换任务；只有「退出即删除」这一点是插件加的。
 
-实现路径（全部在 `app.asar` 0.2.2-rc.1 上核实）：
+实现路径（在 `app.asar` 0.2.2-rc.1 上核实，2026-11-12 在 0.2.2-rc.2 真机上复核，调用链无变化）：
 
 - **创建**：Client 半调用 `ctx.get('uiWorkspace').createNamed({ workspaceId })` 再 `openSession(id)` —— 与宿主「新会话」按钮同一条链路（`dsh-client-ui-workspace` 的 `createInWorkspace` → `sessions.create` → `session/create`）。不传 `sessionId`，所以不会复用你已有的空白会话。
 - **标记**：把会话 id POST 给 Host 半，写进 `~/.dsh/dsh-sidebar-suite/temp-sessions.json`；侧栏行按 `data-row-key="session:<id>"` 打 `data-dsbs-temp-row` 属性，用 CSS `::after` 画「临时」标签（只加属性、不加节点，React 重渲染不会弄丢）。

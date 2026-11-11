@@ -291,16 +291,23 @@ export class Doc {
   getComputedStyle() { return { display: 'block', position: 'static' } }
 }
 
-// A DSH sidebar reduced to its contract: a root whose children are the panels
-// `nav.panelList` and a region wrapper holding the workspaces slot.
+// A DSH 0.2.2-rc.2 sidebar reduced to its contract. These class names were
+// sampled from the live renderer over CDP on 2026-11-12 (root
+// `wtg9ga_scrollArea`, panels `nav.wtg9ga_panelList`, workspaces wrapper
+// `wtg9ga_regionArea`). The CSS-module prefix is opaque and changes between
+// DSH builds; the client only matches the semantic `panelList` suffix plus
+// `[data-slot="sidebar.workspaces"]`, so the suites must exercise the real
+// shipped markup rather than an idealised `nav.panelList` that no longer exists.
 export function buildSidebar() {
   const doc = new Doc()
   const root = doc.createElement('div')
   root.setAttribute('data-dsbs-test-root', '')
+  root.className = 'wtg9ga_scrollArea'
   const nav = doc.createElement('nav')
-  nav.className = 'panelList'
+  nav.className = 'wtg9ga_panelList'
   nav.appendChild(doc.createElement('div'))
   const region = doc.createElement('div')
+  region.className = 'wtg9ga_regionArea'
   const workspaces = doc.createElement('div')
   workspaces.setAttribute('data-slot', 'sidebar.workspaces')
   region.appendChild(workspaces)

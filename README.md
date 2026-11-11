@@ -173,7 +173,8 @@ For local development, point the same command at this folder or a packed `.tgz` 
 **离线安装包 / Offline archives**：[GitHub Releases](https://github.com/YONAN1269/dsh-sidebar-suite/releases) 的每个版本都附一个 `.zip` 源码包和一个 `.tgz` npm 安装包。把 `.tgz` 下到本机后执行 `dsh plugin --profile desktop add <本地 .tgz 的完整路径>` 就能离线安装；Release 页面会显示每个附件真实的下载次数。
 Every release ships a `.zip` source archive and an npm `.tgz`; point the install command at the downloaded `.tgz` for an offline install. GitHub counts downloads of these attached files.
 
-**已在 DSH 0.2.2-rc.1（desktop profile）验证 / Tested on DSH 0.2.2-rc.1 (desktop profile).**
+**已在 DSH 0.2.2-rc.2（desktop profile）真机验证 / Tested on DSH 0.2.2-rc.2 (desktop profile).**
+2026-11-12 用 CDP 连上真机复核：服务发布、`[data-slot="sidebar.workspaces"]` 与 `nav.wtg9ga_panelList` 解析、控制栏 / 页签条 /「临时」按钮注入、第三方 tab 注册与懒挂载、Host 配置路由返回 200、root 子节点顺序稳定 —— **运行时零改动即兼容**。`0.2.2-rc.1` 也兼容，但已是旧版本。Verified against a live 0.2.2-rc.2 renderer; no runtime change was needed, and 0.2.2-rc.1 remains compatible but is superseded.
 本包刻意不声明 `engines.dsh`：当前 DSH 是预发布版，semver 默认规则会把常规版本范围误判为不兼容。
 This bundle deliberately omits `engines.dsh`: DSH is currently a prerelease, and semver's default rules would reject any ordinary range.
 
