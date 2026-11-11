@@ -81,6 +81,44 @@ The toolbar is one segmented control: `[fold | tabs | overlay] │ actions`. The
 
 `换布局 / Cycle` 默认不出现（`showQuickSwitch`），打开后和其它动作按钮共用同一套图标。`Cycle` is off by default and shares the icon set when enabled.
 
+## 第三方页签 / Third-party tabs（0.3.0）
+
+侧栏从 0.3.0 起是一个**可插拔的页容器**：别的插件通过 `ctx.sidebarSuite` 注册自己的页，用户点一下就能在你的界面和你自己的界面之间切换。
+
+```js
+export const inject = ['sidebarSuite']
+
+export function apply(ctx) {
+  ctx.effect(() => ctx.sidebarSuite.registerTab({
+    id: 'my-plugin',
+    title: { zh: '我的面板', en: 'My panel' },
+    icon: '<svg viewBox="0 0 16 16">…</svg>',   // 或一个 emoji
+    order: 100,
+    mount(container, tab) {
+      container.textContent = 'hello'
+      return () => { /* 清理 */ }
+    },
+  }))
+}
+```
+
+设计取舍 / Why it looks like this：
+
+- **给 DOM 容器，不给 React 组件** — 消费方可以是任何技术栈写的插件，不必和本插件的 React 版本对齐。A plain container works for every consumer regardless of framework.
+- **懒挂载** — `mount` 只在页签第一次被打开时执行，没打开过的页签不跑任何代码。Mount runs on first activation only.
+- **`registerTab` 返回自己的 dispose** — 正好是 `ctx.effect` 要的形状，消费方不用自己维护注销；消费方卸载时页签自动消失。The returned disposer plugs straight into `ctx.effect`.
+- **同 id 重注册 = 原地替换** — 客户端热重载会重复注册，替换能保证只有一个页签。Re-registering an id replaces in place, which is what a hot client reload needs.
+- **失败只烂在自己那一页** — `mount` 抛异常时，错误写进它自己的容器并 `console.error` 一次，侧栏其余部分不受影响。A throwing consumer is contained inside its own page.
+- **进不去的边界** — 页签只拿到发给它的容器，没有能力移动、覆盖或重构宿主 DOM。A tab owns its container and nothing else.
+
+三种布局的差异 / Under the three layouts：
+
+- B 标签页：`[扩展][工作区][你的页…]` 并排，都是页。
+- A 折叠、C 浮层：**只有第三方页**进条；内置两组仍由原按钮控制，因为这两种布局不是页签模型。
+- 没有任何第三方注册：页签条本身带 `hidden`，不占高度、不参与布局，看到的和 0.2.x 一模一样（只是多一个隐藏的空容器）。With no consumer the strip carries `hidden`: zero height, no layout impact — visually identical to 0.2.x.
+
+选中态存 `localStorage["dsh-sidebar-suite:active-tab"]`，不写插件配置；再点当前页签退回原来的组。
+
 ## 安装与生效 / Install & apply
 
 ```sh

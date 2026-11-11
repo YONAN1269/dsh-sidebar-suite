@@ -104,6 +104,51 @@ The toolbar is one segmented control: the three mutually exclusive layouts share
 `换布局 / Cycle` 默认不出现，可用 `showQuickSwitch: true` 打开；它和其余动作按钮一起走同一套图标。
 `Cycle` stays hidden unless `showQuickSwitch: true`; it uses the same icon set as the other action buttons.
 
+## 第三方插件接入：注册自己的页签 / Third-party tabs（0.3.0）
+
+别的插件可以往侧栏注册一页自己的界面。客户端会拿到一个 `sidebarSuite` 服务：
+
+Any other plugin can put its own page in the sidebar through one client service.
+
+```js
+// 在消费方插件里 / in the consumer plugin
+export const inject = ['sidebarSuite']
+
+export function apply(ctx) {
+  ctx.effect(() => ctx.sidebarSuite.registerTab({
+    id: 'my-plugin',                            // 必填，[A-Za-z0-9._-]，≤48 字符
+    title: { zh: '我的面板', en: 'My panel' },   // 必填，或直接给字符串
+    icon: '<svg viewBox="0 0 16 16">…</svg>',   // 可选，也可以是一个 emoji
+    order: 100,                                 // 可选，越小越靠左，默认 100
+    mount(container, tab) {                     // 必填（别名 render）
+      container.textContent = 'hello'
+      return () => { /* 清理 */ }                // 可选：移除/卸载时调用
+    },
+  }))
+}
+```
+
+- `mount` 拿到的是**一个空的普通 `<div>`**，原生 DOM、React、canvas 都行，不要求你用哪套框架。
+- **首次点开才调用 `mount`**：没被打开过的页签不执行任何代码。
+- 返回的清理函数在页签被移除、消费方插件卸载、DSH 退出这三种情况下都会执行。
+- `registerTab` 返回它自己的 dispose 函数，所以 `ctx.effect(() => api.registerTab(...))` 就是完整写法，不用自己记着取消。
+- 同一个 id 重复注册 = **热重载**，会原地替换而不是叠出两个页签。
+
+页签出现在哪儿 / Where the page shows up：
+
+| 布局 | 表现 |
+|---|---|
+| B 标签页 | 和控制栏下面那排「扩展 / 工作区」并排 |
+| A 折叠、C 浮层 | 只有插件页签进条；内置两组仍由原按钮控制（这两种布局本来就不是"页签"模型） |
+| 没人注册 | 这排页签**完全不出现**，界面和 0.2.x 一模一样 |
+
+选中哪一页记在 `localStorage["dsh-sidebar-suite:active-tab"]`；**再点一次当前页签就退回原来的组**（布局 A / C 下这是唯一的退出口）。
+
+服务其余方法：`unregisterTab(id)`、`getTabs()`、`activateTab(id)`、`getActiveTab()`、`subscribe(fn)`（`fn(tabs, reason, activeId)`）、`getLayout()`。
+
+> 边界是刻意的：一个页签只拥有发给它的那个容器，没有能力移动或重构侧栏，也不能覆盖宿主自己的界面。
+> A tab owns its container and nothing else — it cannot restructure the sidebar.
+
 ## 实现要点 / How it works
 
 - 所有持久状态写在 `<html>` 属性上：`data-dsbs-mode`、`data-dsbs-tab`、`data-dsbs-fold-ext`、`data-dsbs-fold-ws`、`data-dsbs-pop`、`data-dsbs-quick`、`data-dsbs-rail`、`data-dsbs-narrow`。CSS 负责显隐，插件不重构宿主 DOM。All state lives in `<html>` attributes; CSS owns visibility.
