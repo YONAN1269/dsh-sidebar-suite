@@ -1,6 +1,6 @@
-# 临时会话（0.2.0）· 用记事本改等号右边，保存后「完全退出并重开 DSH」才生效。
-# Temporary session (0.2.0) · edit the values after =, then FULLY QUIT and reopen DSH.
-# 等号左边和 # 开头的行不要动。Do not change the keys or the # lines.
+# 临时会话设置（0.2.8）· 记事本改等号右边，保存后约 3 秒自动生效，不用重启 DSH。
+# Temporary session settings (0.2.8) · edit values after =; saves apply in ~3s, no restart.
+# 等号左边和 # 开头的行不要动；详情页开关写的也是这个文件。Do not change keys or # lines.
 #
 # 说明：临时会话就是左侧栏里的一个真实 DSH 会话（用原生会话窗口），
 # 退出 DSH 时删除。DELETE_ON_EXIT=off 时不再删除，它就变成普通会话。

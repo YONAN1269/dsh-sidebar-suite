@@ -422,5 +422,72 @@ check('host: status exposes the platform', hostStatus.env.platform === process.p
 check('host: status exposes the node version', hostStatus.env.node === process.versions.node)
 check('host: status exposes the route count', typeof hostStatus.routes.registered === 'number')
 
+// ---- 0.2.8: every remaining config key has a working control ------------
+let uiConfig = {
+  ok: true,
+  showButton: true, inChatMode: 'hide', buttonStyle: 'pair',
+  expandAllSessions: true, deleteOnExit: true, scheduleDelete: false,
+  scheduleTime: '03:00', maxKept: 20, configRevision: 4,
+  configFile: 'temp-session-config.txt',
+}
+const uiPosts = []
+const ui = buildClient(async (url, init) => {
+  const text = String(url)
+  const method = (init && init.method) || 'GET'
+  if (text.includes('dsh-temp-session.config')) {
+    if (method === 'POST') {
+      const patch = JSON.parse(init.body || '{}')
+      uiPosts.push(patch)
+      uiConfig = Object.assign({}, uiConfig, patch, { configRevision: uiConfig.configRevision + 1 })
+      return jsonResponse(uiConfig)
+    }
+    return jsonResponse(uiConfig)
+  }
+  if (text.includes('dsh-temp-session.purge')) return jsonResponse({ ok: true, removed: 2 })
+  if (text.includes('dsh-temp-session.status')) return jsonResponse({ ok: true, showButton: true })
+  if (text.includes('dsh-temp-session.list')) return jsonResponse({ ok: true, ids: [], count: 0 })
+  return new Response('not found', { status: 404 })
+})
+ui.setComponent(ui.registered[0])
+let utree = ui.render()
+await new Promise((r) => setTimeout(r, 80))
+utree = ui.render()
+const uitext = textOf(utree)
+
+check('0.2.8: options card renders',
+  findAll(utree, (n) => n.props && Object.prototype.hasOwnProperty.call(n.props, 'data-dsbs-options')).length === 1)
+check('0.2.8: every option label is visible',
+  ['侧栏与临时会话', '显示「临时」按钮', 'CHAT 官网模式', '按钮摆法',
+    '会话默认全展开', '最多保留', '立即清理临时会话'].every((s) => uitext.includes(s)),
+  uitext.slice(0, 260))
+check('0.2.8: revision and file are shown',
+  uitext.includes('设置版本 / Settings rev') && uitext.includes('temp-session-config.txt'))
+check('0.2.8: hot-reload help is shown', uitext.includes('Notepad') && uitext.includes('no restart'))
+
+const ownBtn = findAll(utree, (n) => n.type === 'button' && textOf(n) === '独占一行 / Own row')[0]
+check('0.2.8: own-row pill renders', !!ownBtn)
+if (ownBtn) {
+  ownBtn.props.onClick()
+  await new Promise((r) => setTimeout(r, 60))
+  check('0.2.8: pill posts buttonStyle=own', uiPosts.some((p) => p.buttonStyle === 'own'), JSON.stringify(uiPosts))
+}
+
+const keptInput = findAll(utree, (n) => n.type === 'input' && n.props && n.props.type === 'number')[0]
+check('0.2.8: maxKept number input renders', !!keptInput)
+if (keptInput) {
+  keptInput.props.onChange({ target: { value: '42' } })
+  await new Promise((r) => setTimeout(r, 60))
+  check('0.2.8: number input posts maxKept=42', uiPosts.some((p) => p.maxKept === 42), JSON.stringify(uiPosts))
+}
+
+const purgeBtn = findAll(utree, (n) => n.type === 'button' && textOf(n).includes('立即清理临时会话'))[0]
+check('0.2.8: manual cleanup button renders', !!purgeBtn)
+if (purgeBtn) {
+  purgeBtn.props.onClick()
+  await new Promise((r) => setTimeout(r, 80))
+  check('0.2.8: cleanup calls the purge route', ui.requests.some((r) => r.url.includes('dsh-temp-session.purge')))
+  check('0.2.8: cleanup result is shown', textOf(ui.render()).includes('已清理 / Removed 2'))
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed')
 process.exit(fail === 0 ? 0 : 1)

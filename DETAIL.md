@@ -88,7 +88,7 @@ dsh plugin --profile desktop add dsh-sidebar-suite
 本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.1（desktop profile）** 验证。
 For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.1 (desktop profile)**.
 
-**客户端代码不会热重载 / the client half is not hot-reloaded** — 安装或改动文件后请完全退出并重新打开 DSH / fully quit and reopen DSH after installing or editing files.
+**升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
 > 组合包自带的 `cordis.patch.yml` 会自动挂载，不要再往 profile 的 `cordis.patch.yml` 里加同名行，否则会加载两次。
 > The bundle patch mounts the plugin automatically; do not add a manual mount line or it loads twice.
@@ -116,9 +116,11 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 **为什么删除是安全的**：`dsh-session-query-sqlite` 的 `_reconcile()` 会拿「磁盘上实际存在的会话」和索引行对比，多出来的行直接 `persistentDeletes`，因此删目录之后搜索索引会自愈，不会留下点不开的幽灵会话。
 
-配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT`，记事本改等号右边，完全退出并重开 DSH 生效。
+配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 8 项都能在详情页设**，用记事本改等号右边也行，保存后约 3 秒自动生效，不用重启。
 
 **详情页设置（0.2.2）**：插件详情页顶部卡片新增「临时会话自动删除」区块 —— 「退出 DSH 时删除」和「每天定时清理 + 时间」两个独立开关。它不走 `configForms`，而是 `GET/POST /api/dsh-temp-session.config` 交给 Host 半执行，因为**只有一个数据源**：`temp-session-config.txt`。Host 半按行替换（`KEY=value` 只换 `= ` 右边），注释、空行、键顺序原样保留，用户手写的内容不会丢；缺失的键追加到末尾。保存后立即 `restartScheduler()`，无需重启。
+
+**全部设置图形化 + 热重载（0.2.8）**：详情页新增「侧栏与临时会话」卡，把剩下的 5 个键也做成开关 / 选项按钮 / 数字框，并加了一个「立即清理临时会话」按钮。至此 `temp-session-config.txt` 里**没有任何一项**需要用户手改文本。Host 半在每次 `status` / `config` / `probe` 请求时比对文件的 `mtime + size`，变化就重解析、重排定时清理计划、递增 `configRevision`；Client 半每 2.5–3 秒轮询一次，只在版本变化时原地重应用（按钮显隐、按钮摆法、CHAT 兼容策略、会话全展开）。`saveConfig()` 写盘前也会先重新读文件，避免 UI 的一次保存覆盖掉用户刚刚手改的其它行。不用 `fs.watch`，因为编辑器保存通常是「写临时文件再改名」，且监听器会拖住宿主进程。 / Every remaining key now has a control; a stamp-based reload makes both the switches and Notepad edits live within seconds, with no restart and no lost hand edits.
 
 **定时清理（0.2.2）的实现要点**：
 

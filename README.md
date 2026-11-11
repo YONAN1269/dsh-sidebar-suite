@@ -131,7 +131,7 @@ This bundle deliberately omits `engines.dsh`: DSH is currently a prerelease, and
 组合包 patch 会自动挂载，**不要**再往 profile 的 `cordis.patch.yml` 加同名行，否则加载两次。
 The bundle patch mounts the plugin; do not also add a manual mount line.
 
-客户端代码不热重载：安装或改动文件后请完全退出并重新打开 DSH。
+升级插件包后请完全退出并重新打开 DSH（客户端代码不热重载）；但 0.2.8 起**改配置文件或在详情页改设置都不用重启**，约 3 秒自动生效。
 The client half is not hot-reloaded — fully quit and reopen DSH after installing or editing files.
 
 ## 已知限制 / Known limits
@@ -146,11 +146,11 @@ DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成�
 
 - 每次侧栏刷新都把每个工作区的会话**全部展开**：按宿主自己的按钮走，不改宿主 DOM。
 - 「展开其余 N 个会话」／「收起」按钮**整块隐藏**。
-- 想恢复 DSH 原来的折叠：把 `temp-session-config.txt` 的 **`EXPAND_ALL_SESSIONS=on` 改成 `off`**，保存后彻底退出 DSH 再重开。
+- 想恢复 DSH 原来的折叠：在详情页关掉「会话默认全展开」开关即可；或把 `temp-session-config.txt` 的 **`EXPAND_ALL_SESSIONS=on` 改成 `off`**，保存后约 3 秒生效（已展开的列表要切换一次工作区才会收回去）。
 
 依据（在 `app.asar` 里逐字核对过 `@deepseek-ai/dsh-client-ui-workspace/lib/client.js`）：文案 `sessions.expand` = `展开其余 {n} 个会话`，按钮是 `<button data-row-key="overflow:<group>">`，点一次把该组水位线抬高 5 条，全部显示后 `aria-expanded` 变为 `true` 且文案变成「收起」。
 
-> The host folds session lists after five rows. This plugin presses the host's own overflow button until nothing is hidden, then hides that control entirely. Set `EXPAND_ALL_SESSIONS=off` in `temp-session-config.txt` to restore DSH's folding.
+> The host folds session lists after five rows. This plugin presses the host's own overflow button until nothing is hidden, then hides that control entirely. Use the detail-page switch (or set `EXPAND_ALL_SESSIONS=off` in `temp-session-config.txt`) to restore DSH's folding. Both hot-reload in seconds, no restart.
 
 ## 临时会话 / Temporary session（0.2.0）
 
@@ -182,9 +182,29 @@ DSH **没有公开的「删除会话」接口**（我核对过 `app.asar`：`ses
 
 **正在使用的会话不会被误删**：定时清理会跳过最近 3 分钟内有写入的会话（打开着的会话一直在写转写文件），5 分钟后再试一次。退出时的删除不受这个保护影响 —— 退出本来就是你要求清理。
 
+### 全部设置图形化 + 配置热重载（0.2.8）
+
+详情页最上面那张卡现在能改**全部 8 项**配置，不用再碰文本：
+
+| 设置 | 对应键 |
+| --- | --- |
+| 显示「临时」按钮 | `SHOW_TEMP_BUTTON` |
+| CHAT 官网模式：隐藏 / 显示 | `TEMP_IN_CHAT_MODE` |
+| 按钮摆法：并排 / 独占一行 | `TEMP_BUTTON_STYLE` |
+| 会话默认全展开 | `EXPAND_ALL_SESSIONS` |
+| 退出 DSH 时删除 | `DELETE_ON_EXIT` |
+| 每天定时清理 + 时间 | `SCHEDULE_DELETE` / `SCHEDULE_TIME` |
+| 最多保留几个 | `MAX_KEPT` |
+| 立即清理临时会话 | 手动触发 `purge` |
+
+两条路写的是同一个文件：详情页开关按行替换（注释、空行、顺序原样保留），Host 半用 `mtime + size` 感知外部改动并递增 `configRevision`；客户端每 2.5–3 秒轮询一次，看到新版本就原地重应用。所以**记事本改完保存，约 3 秒自动生效，不用重启 DSH**；反过来 UI 保存前也会先重新读文件，不会把刚手改的其它行覆盖掉。卡片底部会显示当前的「设置版本」号，方便确认有没有生效。
+
+> 仍然需要重启的只有一件事：**升级插件包本身**（`lib/` 里的客户端代码不会热重载）。
+> The only thing that still needs a restart is upgrading the plugin package itself.
+
 ### 配置（记事本可改）
 
-`temp-session-config.txt`，只改等号右边，保存后**完全退出并重开 DSH** 生效。
+`temp-session-config.txt`，只改等号右边，保存后**约 3 秒自动生效，不用重启**；详情页的开关写的是同一个文件。
 
 | 键 | 默认 | 作用 |
 | --- | --- | --- |
