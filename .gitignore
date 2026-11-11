@@ -2,6 +2,9 @@
 dist/
 # Local diagnostics: extracted app.asar sources and one-off probes
 _probe/
+# Per-release helpers: they run once and are thrown away
+_make_release_*.mjs
+_release_body_*.md
 node_modules/
 *.log
 .DS_Store
