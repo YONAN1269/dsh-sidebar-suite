@@ -305,6 +305,10 @@ check('docs: README documents registerTab', /registerTab/.test(readme))
 check('docs: DETAIL explains the service contract', /registerTab/.test(detail))
 check('docs: the Chinese guide has a walkthrough', /registerTab/.test(guide))
 check('docs: changelog has a 0.3.0 section', /^## 0\.3\.0/m.test(changelog))
+check('docs: README says a built-in click notifies subscribers too',
+  /点内置页签/.test(readme) && /activeId.+null|null.+activeId/.test(readme))
+check('docs: changelog records the notification fix',
+  /点了内置页签也会通知订阅者/.test(changelog))
 
 console.log('')
 if (fail > 0) {

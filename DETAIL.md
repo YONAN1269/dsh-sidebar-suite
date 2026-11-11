@@ -109,6 +109,7 @@ export function apply(ctx) {
 - **`registerTab` 返回自己的 dispose** — 正好是 `ctx.effect` 要的形状，消费方不用自己维护注销；消费方卸载时页签自动消失。The returned disposer plugs straight into `ctx.effect`.
 - **同 id 重注册 = 原地替换** — 客户端热重载会重复注册，替换能保证只有一个页签。Re-registering an id replaces in place, which is what a hot client reload needs.
 - **失败只烂在自己那一页** — `mount` 抛异常时，错误写进它自己的容器并 `console.error` 一次，侧栏其余部分不受影响。A throwing consumer is contained inside its own page.
+- **"失去这一列"只有一种通知方式** — 不管是被另一个插件页顶掉、被用户再点一次退回、还是布局 B 下点了「扩展 / 工作区」，走的都是同一次 `subscribe('active', null)`；在两个内置组之间来回切则不通知，因为对消费方来说什么都没变。订阅者不必自己推断"我现在还在不在屏幕上"。Losing the column always arrives as one notification, whoever took it; switching between two built-ins stays silent because nothing changed for the consumer.
 - **进不去的边界** — 页签只拿到发给它的容器，没有能力移动、覆盖或重构宿主 DOM。A tab owns its container and nothing else.
 
 三种布局的差异 / Under the three layouts：

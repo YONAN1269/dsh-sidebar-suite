@@ -547,7 +547,38 @@ async function main() {
   check('back in layout b the built-ins return to the strip',
     tabIds(root.querySelector('[data-dsbs-tabs]')).join(',') === 'ext,ws,demo,notes')
 
-  // ==== 6. a broken consumer cannot take the sidebar down =================
+  // ==== 6. a built-in click notifies subscribers too ======================
+  // A consumer that keeps state (a timer, a canvas, a poll) relies on
+  // `subscribe` to learn it left the screen. Losing the column to a built-in
+  // page is the same event, so it has to produce the same notification.
+  check('a demo tab owns the column before the built-ins are clicked',
+    service.getActiveTab() === 'demo')
+  const heard = []
+  const stopListening = service.subscribe((tabs, reason, activeId) => {
+    heard.push({ reason: reason, activeId: activeId })
+  })
+  root.querySelector('[data-dsbs-tabs]').querySelector('[data-dsbs-tabid="ext"]').click()
+  await settle()
+  check('clicking a built-in page gives the column back to the host groups',
+    service.getActiveTab() === null)
+  check('subscribers hear about it as a normal switch',
+    heard.length === 1 && heard[0].reason === 'active' && heard[0].activeId === null,
+    JSON.stringify(heard))
+  heard.length = 0
+  root.querySelector('[data-dsbs-tabs]').querySelector('[data-dsbs-tabid="ws"]').click()
+  await settle()
+  check('moving between two built-ins does not pretend a consumer tab moved',
+    heard.length === 0, JSON.stringify(heard))
+  // Put the layout back where this test found it: layout b keeps `nav` inert
+  // whenever the workspaces group owns the column, and the later sections
+  // assume the panels group is the visible one.
+  root.querySelector('[data-dsbs-tabs]').querySelector('[data-dsbs-tabid="ext"]').click()
+  await settle()
+  stopListening()
+  service.activateTab('demo')
+  await settle()
+
+  // ==== 7. a broken consumer cannot take the sidebar down =================
   service.registerTab({ id: 'broken', title: '坏掉', mount() { throw new Error('boom') } })
   await settle()
   const brokenButton = root.querySelector('[data-dsbs-tabs]').querySelector('[data-dsbs-tabid="broken"]')
@@ -561,7 +592,7 @@ async function main() {
   service.unregisterTab('broken')
   await settle()
 
-  // ==== 7. unregister =====================================================
+  // ==== 8. unregister =====================================================
   service.unregisterTab('demo')
   await settle()
   check('unregistering removes the container', !root.querySelector('[data-dsbs-tabpanel="demo"]'))
@@ -577,7 +608,7 @@ async function main() {
     root.querySelector('[data-dsbs-tabs]').hasAttribute('hidden'))
   check('the panels group is back to normal', !nav.hasAttribute('inert'))
 
-  // ==== 8. paint() must be idempotent =====================================
+  // ==== 9. paint() must be idempotent =====================================
   // paint() installs a MutationObserver on the sidebar root. If a single paint
   // inserted a node every time it ran, the observer would re-trigger it forever
   // and peg the renderer — exactly the failure mode that is invisible in tests
@@ -620,7 +651,7 @@ async function main() {
       loop.tree.root.querySelectorAll('[data-dsbs-bar]').length === 1)
   }
 
-  // ==== 9. teardown =======================================================
+  // ==== 10. teardown ======================================================
   {
     const bye = buildClient()
     await settle()

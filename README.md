@@ -146,6 +146,8 @@ export function apply(ctx) {
 
 服务其余方法：`unregisterTab(id)`、`getTabs()`、`activateTab(id)`、`getActiveTab()`、`subscribe(fn)`（`fn(tabs, reason, activeId)`）、`getLayout()`。
 
+`reason` 的取值是 `register` / `unregister` / `active` / `orphan`。**点内置页签（布局 B 下的「扩展 / 工作区」）也算一次 `active`**（`activeId` 为 `null`），所以靠订阅停表、停轮询、停动画的代码不需要为内置页签另写一套判断；反过来，在两个内置组之间切换是静默的。
+
 > 边界是刻意的：一个页签只拥有发给它的那个容器，没有能力移动或重构侧栏，也不能覆盖宿主自己的界面。
 > A tab owns its container and nothing else — it cannot restructure the sidebar.
 
