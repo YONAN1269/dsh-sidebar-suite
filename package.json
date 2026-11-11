@@ -1,6 +1,6 @@
 {
   "name": "dsh-sidebar-suite",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "license": "MIT",
   "author": "Yonan",
   "repository": {
@@ -27,7 +27,7 @@
   ],
   "type": "module",
   "scripts": {
-    "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs && node tests/test_028.mjs",
+    "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs && node tests/test_028.mjs && node tests/test_029.mjs",
     "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/temp-session-host.mjs && npm pack --dry-run"
   },
   "main": "lib/index.js",

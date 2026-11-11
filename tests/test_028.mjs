@@ -149,7 +149,18 @@ check('client: manual cleanup uses the real purge route',
   client.includes("'api/dsh-temp-session.purge'") && client.includes('function purgeNow()'))
 check('client: detail page polling is revision-gated', client.includes('rev !== revision'))
 check('client: settings help explains both edit paths', client.includes('Notepad') && client.includes('no restart'))
-check('package: version is 0.2.8', pkg.version === '0.2.8', pkg.version)
+// Anchored to "0.2.8 or later" rather than an exact string: this suite tests
+// the 0.2.8 feature set, and bumping the version for the next release should
+// not break it.
+const gte = (a, b) => {
+  const x = String(a).split('.').map(Number)
+  const y = String(b).split('.').map(Number)
+  for (let i = 0; i < 3; i += 1) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0)
+  }
+  return true
+}
+check('package: version is 0.2.8 or later', gte(pkg.version, '0.2.8'), pkg.version)
 check('package: test chain includes 0.2.8 suite', /tests\/test_028\.mjs/.test((pkg.scripts || {}).test || ''))
 check('docs: README no longer says a config edit needs a restart',
   !/保存后\*\*完全退出并重开 DSH\*\* 生效/.test(readme))

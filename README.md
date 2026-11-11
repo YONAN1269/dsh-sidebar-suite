@@ -98,9 +98,11 @@ Scan with WeChat Pay — **purely voluntary, no rewards promised**. The author a
 
 ## 控制栏 / Where the controls are
 
-侧栏顶部一排文字按钮：`折叠 · 标签页 · 浮层 │ 显示工作区 / 展开扩展 · 换布局`。
-`换布局 / Cycle` 在侧栏窄于 300px 时隐藏，可用 `showQuickSwitch: false` 彻底移除。
-A single row of text buttons at the top of the sidebar. `Cycle` hides below 300 px and can be removed with `showQuickSwitch: false`.
+侧栏顶部是一条**分段控件**：三个互斥布局（折叠 / 标签页 / 浮层）装在同一枚灰色胶囊里，选中的那个是白底高亮；右侧隔一道竖线是当前布局专用的动作按钮（展开/折叠扩展、显示工作区、换标签页、浮出面板）。0.2.9 起全部换成矢量图标，窄侧栏只留图标（悬停有文字提示），侧栏宽于 300px 时动作按钮把文字长回来。
+The toolbar is one segmented control: the three mutually exclusive layouts share a single pill with the active one highlighted, and the buttons that act on the chosen layout sit on the far side of a divider. Since 0.2.9 the icons are real vectors — icon-only in a narrow column (with tooltips), and the action buttons grow their labels back once the column passes 300 px.
+
+`换布局 / Cycle` 默认不出现，可用 `showQuickSwitch: true` 打开；它和其余动作按钮一起走同一套图标。
+`Cycle` stays hidden unless `showQuickSwitch: true`; it uses the same icon set as the other action buttons.
 
 ## 实现要点 / How it works
 

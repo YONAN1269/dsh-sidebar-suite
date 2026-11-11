@@ -36,7 +36,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 ### 美观性 / Looks native
 
 - **不另起一套皮肤 / No custom skin** — 颜色、边框、文字层级全部取宿主的设计变量（`--dsw-alias-*`），深色 / 浅色主题自动跟随，侧栏里不会出现一块「外来的」色块。Colours, borders and text levels come from the host's own design tokens, so light and dark themes both look native.
-- **视觉重量对齐 / Same visual weight** — 控制栏用 11px 细字号、6px 圆角、1px 分隔线，和宿主按钮同一量级；选中态只加一层浅底色和半粗字重，不用刺眼高亮。The bar uses 11 px text, 6 px radii and a 1 px divider; the active state is a subtle tint plus medium weight.
+- **视觉重量对齐 / Same visual weight** — 0.2.9 起控制栏换成 **28×26 的图标按钮 + 16px 矢量图标**：三个布局装进一枚圆角胶囊（选中项白底 + 1px 投影），动作按钮用 1px 竖线分隔。图标是 CSS mask（`currentColor` 上色），所以跟着宿主主题走；窄侧栏只留图标，宽于 300px 时动作按钮把文字长回来。Since 0.2.9 the bar is 28×26 icon buttons with 16 px vector glyphs: the three layouts share a rounded pill (active = light fill + 1 px shadow), and a 1 px divider separates the action buttons. The glyphs are CSS masks painted in `currentColor`, so they follow the host theme; icon-only when narrow, labelled again past 300 px.
 - **看得懂的示意图 / Diagrams, not words** — 三张布局卡各画一个 36×24 的迷你侧栏示意，选中的那张标「当前默认」，不用读说明也能分辨。Each layout card draws a 36×24 mini sidebar and marks the current default.
 - **不遮挡、不闪烁 / No jumps** — 隐藏分组用 `display:none` + `aria-hidden` + `inert`，切换是纯 CSS 显隐，不卸载重建节点；浮层用 10px 圆角和柔和阴影盖在工作区上方，不把内容挤走。Pure-CSS show/hide, no unmounting; the overlay uses a 10 px radius and a soft shadow.
 - **标记不破坏行高 / Unobtrusive badges** — 「临时」标签由 CSS `::after` 画在会话行上，不插入新节点，行高、缩进、悬停态跟原生会话完全一致。The TEMP badge is a CSS pseudo-element, so rows keep their native height, indent and hover state.
@@ -76,8 +76,10 @@ The report always carries: plugin version (read from `package.json`, so it canno
 
 ## 控制栏在哪 / Where the controls are
 
-侧栏顶部一排文字按钮：`折叠 · 标签页 · 浮层 │ 显示工作区 / 展开扩展 · 换布局`。
-A single row of text buttons sits at the top of the sidebar. `换布局 / Cycle` is hidden below 300 px and can be turned off with `showQuickSwitch: false`.
+侧栏顶部是一条分段控件：`[折叠 | 标签页 | 浮层] │ 动作按钮`。前三个互斥，装在同一枚胶囊里，选中的那个白底高亮；竖线右边是当前布局专用的动作按钮（展开/折叠扩展、显示工作区、换标签页、浮出面板）。
+The toolbar is one segmented control: `[fold | tabs | overlay] │ actions`. The first three are mutually exclusive inside a single pill with the active one highlighted; right of the divider sit the buttons that act on the chosen layout.
+
+`换布局 / Cycle` 默认不出现（`showQuickSwitch`），打开后和其它动作按钮共用同一套图标。`Cycle` is off by default and shares the icon set when enabled.
 
 ## 安装与生效 / Install & apply
 
