@@ -1,16 +1,30 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`）。
-> ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.4.1` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.4.1 or later.
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`）。
+> ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
 
-## 未发布 / Unreleased — 控制栏固定在列表上方，不再跳到下方（2026-11-12）
+## 0.5.0 — 砍掉折叠布局、加入官方默认，并修好控制栏位置（2026-11-12）
 
-> ⚠️ **npm 上的 `0.4.1` 不含这个修复。** 以下改动目前只在本地仓库与本机 `link:` 开发版里；外部用户要等下一个发布版本。The published 0.4.1 does not contain this fix yet.
+**这次改了客户端样式表与布局状态机（`lib/client.js`）、配置 schema（`lib/index.js`）**，所以**升级后要从托盘彻底退出 DSH 再重开一次**；刷新 / 热重载不算。This release changes the injected stylesheet and the layout state machine; quit DSH from the tray and reopen once after upgrading.
+
+> ⚠️ **破坏性变更 / Breaking**：`mode: a`（折叠）已移除，`getLayout().mode` 现在只返回 `b` / `c` / `n`，`Config.mode` 的合法值集合也变了，所以版本号跳到 `0.5.0`。旧配置里的 `mode: a` **不会报错、也不会变成另一个布局**：客户端每次读取都把它映射到新的「官方默认」`n`；`lib/index.js` 的 schema 仍保留 `a` 作为只读别名，只为让老 profile 通过校验。The removed `a` value is normalized to `n` on read.
+
+### 布局精简 / Fewer, clearer layouts
+
+- **砍掉第一种布局 `a` 折叠** — 它用两个独立开关控制两组，能产生 4 种状态：两组都收起 = 空白侧栏（死状态）、两组都展开 = 与 DSH 原生一模一样（「点了等于没点」），剩下「只留一组」两态又已被 `b` 标签页完全覆盖。它没有任何「有用且独有」的状态，却额外带来一套与互斥胶囊语义冲突的双开关、以及窄侧栏里只能靠单/双箭头区分的两个图标。前两轮反馈的「按钮跑到列表下方」「展开合起来回跳」也都出在这套折叠按钮上。Removed: its four toggle states held two dead states and two states already covered by layout `b`.
+- **新增第三种布局 `n` 官方默认（放在胶囊最后）** — 两组都常驻，插件对布局**零干预**：既不写 CSS 隐藏规则，运行时也不隐藏任何一组。想看回 DSH 原本的侧栏，一个按钮就能退回去。Added as the last pill option: both groups stay exactly as the host drew them, with no CSS or runtime override.
+- **官方默认下工具条不会消失** — 该布局没有任何动作按钮（竖线与右侧按钮自动隐藏），但**布局胶囊始终保留**。这对 `showQuickSwitch: false` 的用户尤其重要：循环按钮本来就不显示，若连胶囊一起藏掉就只剩「去详情页改配置」一条退路，等于「进去了出不来」。The pill stays visible so there is always a way back.
+- **三种布局的新顺序**：`b` 标签页 → `c` 浮层 → `n` 官方默认。出厂默认仍是 `b`（插件本就是为了消除抢高度），`n` 作为随时可退回的兜底。
+- **控件与字典一并清理** — 删掉 `fold-ext` / `fold-ws` 两个按钮、`fold` / `fold2` 两个图标、`data-dsbs-fold-*` 两个 html 标志、4 组中英字典键，以及 `foldExt` / `foldWs` 两个运行时状态；详情页示意图改成「两组并排常驻」。teardown 仍会清理旧版本可能残留的那两个 html 属性。
+- **对三方插件的影响** — `getLayout()` 的 `mode` 取值集合变化（见上）。消费方本来就不该写 `if (layout.mode === 'a')`；`registerTab()` 拿到的容器与懒挂载行为不变，官方默认下插件页被激活时仍按既定规则接管整列（那是消费方的显式动作，不是布局覆盖）。
+- **验证** — 新增 `tests/test_036.mjs`：`MODES` 顺序、无死状态、官方默认下两组都不隐藏、胶囊始终可见、动作按钮与竖线隐藏、`mode: a` → `n` 的迁移，以及「点胶囊能切回来」这条防困死断言。受影响的历史测试（`test_025` / `029` / `031` / `033`）同步更新，`npm test` 扩为 14 套。
+
+### 顺带修好的控制栏位置（原计划的 0.4.2）
 
 - **问题**：布局工具条（三个布局图标 + 收起箭头）出现在**整个插件列表的下方**；点右侧「收起扩展 / 收起工作区」箭头后位置还会变，展开与合起时上下跳，交互很别扭。The layout toolbar sat below the whole panel list and jumped around when a group was folded.
 - **更正上一次的判断**：本条下面曾经写过「宿主折叠时把面板重挂到更深一层，`root` 变了所以控制栏被搬走」——**这个解释是错的**。解包 DSH `app.asar` 里的 `SidebarRoot.tsx` / `SidebarRoot.module.css` 后确认，宿主 JSX 结构固定，折叠分组并不会重挂 `scrollArea` 的两块面板。The earlier "re-parenting" explanation was wrong; the host JSX is stable.

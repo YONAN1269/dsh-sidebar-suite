@@ -319,8 +319,11 @@ check('docs: changelog has a 0.4.0 section', /^## 0\.4\.0/m.test(changelog))
 check('docs: changelog has a 0.4.1 section', /^## 0\.4\.1/m.test(changelog))
 check('docs: README explains the rc.2 grid adaptation',
   /grid-column:1\/-1/.test(readme) && /CSS Grid/.test(readme))
-check('docs: the Chinese guide points rc.2 + 0.4.0 users at 0.4.1',
-  /v0\.4\.1/.test(guide) && /压住「工作区」标题/.test(guide))
+check('docs: the Chinese guide points old users at 0.5.0',
+  /v0\.5\.0/.test(guide) && /从托盘彻底退出 DSH/.test(guide))
+check('docs: changelog has a 0.5.0 section', /^## 0\.5\.0/m.test(changelog))
+check('docs: changelog documents the removal of layout a', /砍掉第一种布局/.test(changelog))
+check('docs: README documents the official default layout', /官方默认 \/ Default/.test(readme))
 check('docs: no stale "zero runtime change" claim survives',
   !/运行时零改动即兼容/.test(readme) && !/插件运行时无需改动/.test(guide))
 check('docs: README documents the right-click menu', /保留为正式会话/.test(readme))

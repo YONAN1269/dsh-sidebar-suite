@@ -52,7 +52,7 @@ check('DETAIL: practicality lists the newer features',
   detail.includes('临时会话 / Temporary session') && detail.includes('No more "Show N more"') && detail.includes('设置项置顶 / Settings first'))
 check('DETAIL: visual claims are concrete, not slogans',
   detail.includes('--dsw-alias-*') && detail.includes('36×24') && detail.includes('::after') && detail.includes('inert') && detail.includes('10 px'))
-check('DETAIL: still documents the three layouts', detail.includes('## 三种布局 / Three layouts'))
+check('DETAIL: documents the layout section', detail.includes('## 布局 / Layouts'))
 check('DETAIL: still documents feedback and support',
   detail.includes('## 反馈 / Feedback') && detail.includes('## 支持作者 / Support the author'))
 

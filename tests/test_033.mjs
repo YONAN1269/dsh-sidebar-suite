@@ -185,7 +185,7 @@ async function main() {
   {
     const loop = buildClient()
     await settle()
-    for (const mode of ['a', 'b', 'c']) {
+    for (const mode of ['b', 'c', 'n']) {
       const button = loop.tree.root.querySelector('[data-dsbs-btn="mode-' + mode + '"]')
       if (button) button.click()
       await settle()

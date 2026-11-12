@@ -212,16 +212,16 @@ async function main() {
   check('remounting does not happen on a second visit',
     (service.activateTab('demo'), true) && demoMounts.length === 1)
 
-  // ==== 5. layouts a and c keep the strip =================================
+  // ==== 5. layouts n and c keep the strip =================================
   const modeButton = (mode) => root.querySelector('[data-dsbs-btn="mode-' + mode + '"]')
-  modeButton('a').click()
+  modeButton('n').click()
   await settle()
-  check('layout a keeps the strip visible',
+  check('official default keeps the strip visible',
     !root.querySelector('[data-dsbs-tabs]').hasAttribute('hidden'))
-  check('layout a drops the built-in entries (folding, not paging, is its job)',
+  check('official default drops the built-in entries (it is not a paging model)',
     tabIds(root.querySelector('[data-dsbs-tabs]')).join(',') === 'demo,notes',
     '[' + tabIds(root.querySelector('[data-dsbs-tabs]')).join(' ') + ']')
-  check('layout a still lets a tab own the column', service.getActiveTab() === 'demo' && nav.hasAttribute('inert'))
+  check('official default still lets a tab own the column', service.getActiveTab() === 'demo' && nav.hasAttribute('inert'))
 
   modeButton('c').click()
   await settle()

@@ -1,18 +1,20 @@
 # 侧栏布局大师 · Sidebar Suite
 
-> **中文**：**这是一款专门针对改进 DSH 左侧栏体验的插件。** 左侧栏里「扩展」和「工作区」永远在抢同一块高度；装了几个插件之后，找一个入口要滚半天；项目一多，扩展就被挤没。它只解决这一处，但要把它做到**既强实用、又好看**：三种布局一键切换、**默认布局就在本页最上方**、会话列表默认全部展开、临时会话默认在退出 DSH 时删除（每天定时清理默认关，可在本页开启）；界面全程沿用宿主原生配色、圆角与间距，不另起一套皮肤。
+> **中文**：**这是一款专门针对改进 DSH 左侧栏体验的插件。** 左侧栏里「扩展」和「工作区」永远在抢同一块高度；装了几个插件之后，找一个入口要滚半天；项目一多，扩展就被挤没。它只解决这一处，但要把它做到**既强实用、又好看**：标签页 / 浮层 / 官方默认三种布局一键切换、**默认布局就在本页最上方**、会话列表默认全部展开、临时会话默认在退出 DSH 时删除（每天定时清理默认关，可在本页开启）；界面全程沿用宿主原生配色、圆角与间距，不另起一套皮肤。
 >
 > **English**: **This is a plugin dedicated to improving the DSH sidebar experience.** The panels group and the workspaces group fight for the same vertical space; once you install a few plugins, finding anything means scrolling; add more projects and the panels vanish entirely. It fixes only that one surface, but fixes it properly — **seriously practical and native-looking**: three layouts in one click, the **startup-default picker at the very top of this page**, an always-expanded session list, temp sessions deleted when DSH quits by default (daily cleanup off unless enabled), and a UI built entirely from the host's own colours, radii and spacing instead of a custom skin.
 
 ---
 
-## 三种布局 / Three layouts
+## 布局 / Layouts
 
 | 模式 / Mode | 中文 | English |
 | --- | --- | --- |
-| `a` 折叠 / Fold | 两组各自收起，想留哪块留哪块。 | Each group folds independently — keep exactly what you need. |
 | `b` 标签页 / Toggle (**默认 / default**) | 两组共用一栏，用顶部按钮互斥切换，侧栏再长也不打架。 | Both groups share one space; the bar swaps between them. The sidebar stays short. |
 | `c` 浮层 / Overlay | 工作区常驻，扩展以浮层盖在上面，随时展开/收起。 | Workspaces stay put; panels open as a floating layer you can show or hide. |
+| `n` 官方默认 / Default | 两组都常驻，插件既不写隐藏样式也不在运行时隐藏任何一组。 | Both groups stay exactly as DSH drew them; no layout override at all. |
+
+> **0.5.0 砍掉了旧的 `a` 折叠布局。** 它用两个独立开关控制两组，4 种组合里有 2 种是无效状态：两组都收起 = 空白侧栏，两组都展开 = 与官方默认完全相同；剩下「只留一组」两态又已被 `b` 标签页覆盖。控件语义也与「互斥胶囊」冲突，窄侧栏里两个箭头只能靠单/双折线区分。旧配置里的 `mode: a` 现在自动按官方默认打开。Removed because it had no useful, unique state and added two dead states.
 
 每张布局卡片都画了示意图，选中的那张标着「当前默认 / Current」。点一下就通过官方配置层写入，**立刻生效、下次启动照旧**。
 Each card draws a small diagram of its layout, and the selected one is marked as the current default. A click writes through the official config layer — **effective immediately and on every future launch**.
@@ -76,8 +78,8 @@ The report always carries: plugin version (read from `package.json`, so it canno
 
 ## 控制栏在哪 / Where the controls are
 
-侧栏顶部是一条分段控件：`[折叠 | 标签页 | 浮层] │ 动作按钮`。前三个互斥，装在同一枚胶囊里，选中的那个白底高亮；竖线右边是当前布局专用的动作按钮（展开/折叠扩展、显示工作区、换标签页、浮出面板）。
-The toolbar is one segmented control: `[fold | tabs | overlay] │ actions`. The first three are mutually exclusive inside a single pill with the active one highlighted; right of the divider sit the buttons that act on the chosen layout.
+侧栏顶部是一条分段控件：`[标签页 | 浮层 | 官方默认] │ 动作按钮`。三个互斥，装在同一枚胶囊里，选中的那个白底高亮；竖线右边是当前布局专用的动作按钮（换标签页、浮出面板）。**官方默认没有任何动作按钮**（竖线一并隐藏），但胶囊保留 —— 这是 `showQuickSwitch: false` 时唯一的退出口。
+The toolbar is one segmented control: `[toggle | overlay | default] │ actions`. The three are mutually exclusive inside a single pill with the active one highlighted; right of the divider sit the buttons that act on the chosen layout. Default has no actions, but the pill always stays visible so the user can switch back.
 
 `换布局 / Cycle` 默认不出现（`showQuickSwitch`），打开后和其它动作按钮共用同一套图标。`Cycle` is off by default and shares the icon set when enabled.
 
@@ -115,7 +117,7 @@ export function apply(ctx) {
 三种布局的差异 / Under the three layouts：
 
 - B 标签页：`[扩展][工作区][你的页…]` 并排，都是页。
-- A 折叠、C 浮层：**只有第三方页**进条；内置两组仍由原按钮控制，因为这两种布局不是页签模型。
+- C 浮层、N 官方默认：**只有第三方页**进条；内置两组仍由宿主自己显示，因为这两种布局不是页签模型。官方默认下插件页被激活时仍会接管整列（这是消费方的显式动作，不是布局覆盖）。
 - 没有任何第三方注册：页签条本身带 `hidden`，不占高度、不参与布局，看到的和 0.2.x 一模一样（只是多一个隐藏的空容器）。With no consumer the strip carries `hidden`: zero height, no layout impact — visually identical to 0.2.x.
 
 选中态存 `localStorage["dsh-sidebar-suite:active-tab"]`，不写插件配置；再点当前页签退回原来的组。
@@ -137,9 +139,9 @@ For local development, point the same command at this folder or a packed `.tgz`.
 ## 已知限制 / Known limits
 
 - `[data-slot="sidebar.workspaces"]` 与 `panelList` 是宿主的半稳定约定；若宿主改版，插件会退化成「有控制栏但无效果」而不是抛错。**0.2.2-rc.2 实测**：根节点 `wtg9ga_scrollArea`、扩展面板 `nav.wtg9ga_panelList`、工作区容器 `wtg9ga_regionArea` —— CSS-module 哈希前缀 `wtg9ga_` 会在 DSH 重新构建时变，插件只匹配 `panelList` 这个语义后缀与上面那个 `data-slot`，从不硬编码完整类名；`tests/test_034.mjs` 会验证换哈希、纯哈希类名、以及缺少 workspaces 插槽时的行为。These host markup contracts are semi-stable; a host change degrades gracefully instead of throwing. On 0.2.2-rc.2 the real classes are `wtg9ga_scrollArea` / `nav.wtg9ga_panelList` / `wtg9ga_regionArea`; only the semantic suffix and the slot are matched, never the generated prefix.
-- **侧栏根节点可能是 flex，也可能是 grid（0.4.1 / 未发布的 0.4.2）** — 0.2.2-rc.2 把 `wtg9ga_scrollArea` 从纵向 flex 改成三列 CSS Grid（`4px 264px 6px`），而且是**四行** `8px / max-content / 2px / max-content`：宿主把 `nav.panelList` 钉在 `grid-row:2`、`wtg9ga_regionArea` 钉在 `grid-row:4`。0.4.1 让注入节点 `grid-column:1/-1` 修好了 4px 挤压与标题重叠；但没有指定行的节点仍被自动排进隐式行、落在两个宿主面板**之后**，`order` 也压不过显式的 `grid-row`。所以控制栏与页签条改为放进 grid 的父级 `wtg9ga_scrollRegion`（稳定的 flex 列，React 不重建），DOM 顺序即视觉顺序；只有第三方 tab 页面仍留在 grid 里，保留跨列规则与 4px / 6px 内边距。**不改宿主节点、不依赖生成类名、不做版本嗅探**；旧 flex 根上这套定位同样成立。The host root may be flex (rc.1) or a grid with explicitly pinned rows (rc.2); the header lives in the flex wrapper above that grid, and only a plugin page still spans its columns.
+- **侧栏根节点可能是 flex，也可能是 grid（0.4.1 / 0.5.0）** — 0.2.2-rc.2 把 `wtg9ga_scrollArea` 从纵向 flex 改成三列 CSS Grid（`4px 264px 6px`），而且是**四行** `8px / max-content / 2px / max-content`：宿主把 `nav.panelList` 钉在 `grid-row:2`、`wtg9ga_regionArea` 钉在 `grid-row:4`。0.4.1 让注入节点 `grid-column:1/-1` 修好了 4px 挤压与标题重叠；但没有指定行的节点仍被自动排进隐式行、落在两个宿主面板**之后**，`order` 也压不过显式的 `grid-row`。所以控制栏与页签条改为放进 grid 的父级 `wtg9ga_scrollRegion`（稳定的 flex 列，React 不重建），DOM 顺序即视觉顺序；只有第三方 tab 页面仍留在 grid 里，保留跨列规则与 4px / 6px 内边距。**不改宿主节点、不依赖生成类名、不做版本嗅探**；旧 flex 根上这套定位同样成立。The host root may be flex (rc.1) or a grid with explicitly pinned rows (rc.2); the header lives in the flex wrapper above that grid, and only a plugin page still spans its columns.
 - 浮层定位依赖 `:has()`，需要 Chromium 内核（DSH 桌面端即是）。Overlay positioning uses `:has()`, so it needs a Chromium-based client.
-- 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计。Toggle mode hides the whole workspaces region, including anything else the host renders inside it.
+- 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计；官方默认则两组都不隐藏。Toggle mode hides the whole workspaces region; the official default hides neither group.
 
 ## 临时会话 / Temporary session（0.2.0）
 

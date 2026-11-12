@@ -5,16 +5,16 @@
 > 两个数字不是一回事：左边是 **npm 近 30 天安装量**；右边是 **GitHub Release 附件的下载总数** —— GitHub 只统计这个，`git clone` 和 npm 安装都不计入。附件是 2026-11-10 才补齐的，所以右边从 0 开始，每有一次真实下载才 +1。
 > The left badge counts npm installs (last 30 days); the right one counts downloads of **attached release files only** — clones and npm installs are not included. Assets were first attached on 2026-11-10, so that number starts at zero.
 
-> 让左侧栏从「抢地盘」变成「听你的」。三种布局、一键切换、零改动宿主结构，默认布局在插件详情页顶部直接改。
+> 让左侧栏从「抢地盘」变成「听你的」。标签页 / 浮层 / 官方默认三种布局、一键切换、零改动宿主结构，默认布局在插件详情页顶部直接改。
 > Tame the DSH sidebar: three layouts, one click, zero DOM rewrites — set your startup default right at the top of the plugin page.
 
-**中文**：DSH 左侧栏把「扩展面板」和「工作区」堆在同一列，互相抢高度。本项目提供三种布局解决这个问题，并带来一个中英双语、带图形化设置的详情页。
+**中文**：DSH 左侧栏把「扩展面板」和「工作区」堆在同一列，互相抢高度。本项目提供两种改写方案（标签页 / 浮层）与一个随时可退回的「官方默认」，并带来一个中英双语、带图形化设置的详情页。
 **English**: The panels group and the workspaces group compete for the same vertical space. This bundle offers three layouts for them and ships a bilingual detail page with a graphical settings picker.
 
 详情页长文档见 [DETAIL.md](DETAIL.md)（中英双语 / bilingual, 含收款码 / includes the payment QR）。
 The full detail document is [DETAIL.md](DETAIL.md).
 
-**一步步照着用**：[使用说明.md](使用说明.md) —— 安装、三种布局、临时会话、配置文件逐行说明、常见故障与反馈，中英双语随包附带（0.2.5 起）。
+**一步步照着用**：[使用说明.md](使用说明.md) —— 安装、布局说明、临时会话、配置文件逐行说明、常见故障与反馈，中英双语随包附带（0.2.5 起）。
 **Step-by-step guide**: [使用说明.md](使用说明.md) — install, layouts, temp sessions, every config line, troubleshooting and feedback; shipped inside the npm package since 0.2.5.
 
 ## 这是一款什么插件 / What this plugin is
@@ -24,7 +24,7 @@ The full detail document is [DETAIL.md](DETAIL.md).
 
 | 设计取向 / Design goal | 落在哪 / What it means |
 | --- | --- |
-| **强实用性 / Seriously practical** | 三种布局一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且**默认在退出 DSH 时删除**（`DELETE_ON_EXIT=on`；**每天定时清理默认关**，需要时在详情页开启并设时间）、**临时会话可右键「保留为正式会话」或「立即删除」**（0.4.0）、详情页三种反馈入口 |
+| **强实用性 / Seriously practical** | 三种布局（含官方默认）一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且**默认在退出 DSH 时删除**（`DELETE_ON_EXIT=on`；**每天定时清理默认关**，需要时在详情页开启并设时间）、**临时会话可右键「保留为正式会话」或「立即删除」**（0.4.0）、详情页三种反馈入口 |
 | **美观性 / Looks native** | 颜色与层级全取宿主设计变量、深浅主题自动跟随；细字号控制栏、迷你布局示意图、「临时」用 CSS 标签不破坏行高；不重构宿主 DOM、不弹窗、不另起一套皮肤 |
 
 完整的「强实用性 / 美观性」逐条说明见 [DETAIL.md](DETAIL.md) 的「这是一款什么插件」一节。
@@ -57,13 +57,15 @@ The point-by-point list of both design goals is in the "What this plugin is" sec
 
 > Report a bug, request a feature, or just say something feels off. Use **Issues** for bugs, **Discussions** for questions, **marketplace comments** for the channel the plugin market actually defines, or the **Feedback** box on the plugin detail page, which packs your version, OS, layout and last error into copyable text.
 
-## 三种布局 / Three layouts
+## 布局 / Layouts
 
 | 模式 / Mode | 中文 | English |
 | --- | --- | --- |
-| `a` 折叠 / Fold | 两组各自收起。 | Each group folds on its own. |
 | `b` 标签页 / Toggle（默认 / default） | 两组共用一栏，标签互斥切换。 | The groups share one space; the bar switches between them. |
 | `c` 浮层 / Overlay | 工作区常驻，扩展以浮层展开。 | Workspaces stay put; panels open as an overlay. |
+| `n` 官方默认 / Default | 两组都常驻，插件对布局零干预。 | Both groups stay visible — the official sidebar, with no override at all. |
+
+> **0.5.0 移除了旧的 `a` 折叠布局**：两个独立开关能造出「空白侧栏」和「与 DSH 原生一模一样」两种无效状态，其余两态又已被 `b` 完全覆盖。旧配置里的 `mode: a` 会自动按 `n` 打开，无需手动改；`getLayout().mode` 现在只返回 `b` / `c` / `n`。The folded layout was removed in 0.5.0; old `a` configs now open in Default.
 
 ## 默认模式 / Default mode
 
@@ -98,8 +100,8 @@ Scan with WeChat Pay — **purely voluntary, no rewards promised**. The author a
 
 ## 控制栏 / Where the controls are
 
-侧栏顶部是一条**分段控件**：三个互斥布局（折叠 / 标签页 / 浮层）装在同一枚灰色胶囊里，选中的那个是白底高亮；右侧隔一道竖线是当前布局专用的动作按钮（展开/折叠扩展、显示工作区、换标签页、浮出面板）。0.2.9 起全部换成矢量图标，窄侧栏只留图标（悬停有文字提示），侧栏宽于 300px 时动作按钮把文字长回来。
-The toolbar is one segmented control: the three mutually exclusive layouts share a single pill with the active one highlighted, and the buttons that act on the chosen layout sit on the far side of a divider. Since 0.2.9 the icons are real vectors — icon-only in a narrow column (with tooltips), and the action buttons grow their labels back once the column passes 300 px.
+侧栏顶部是一条**分段控件**：三个互斥布局（标签页 / 浮层 / 官方默认）装在同一枚灰色胶囊里，选中的那个是白底高亮；右侧隔一道竖线是当前布局专用的动作按钮（换标签页、浮出面板）。0.2.9 起全部换成矢量图标，窄侧栏只留图标（悬停有文字提示），侧栏宽于 300px 时动作按钮把文字长回来。**官方默认下没有动作按钮，但胶囊始终保留** —— 否则把 `showQuickSwitch` 关掉的用户就切不回来了。
+The toolbar is one segmented control: the three mutually exclusive layouts share a single pill with the active one highlighted, and the buttons that act on the chosen layout sit on the far side of a divider. Since 0.2.9 the icons are real vectors — icon-only in a narrow column (with tooltips), and the action buttons grow their labels back once the column passes 300 px. The official default has no action buttons, but the pill always stays visible so there is a way back.
 
 `换布局 / Cycle` 默认不出现，可用 `showQuickSwitch: true` 打开；它和其余动作按钮一起走同一套图标。
 `Cycle` stays hidden unless `showQuickSwitch: true`; it uses the same icon set as the other action buttons.
@@ -139,10 +141,10 @@ export function apply(ctx) {
 | 布局 | 表现 |
 |---|---|
 | B 标签页 | 和控制栏下面那排「扩展 / 工作区」并排 |
-| A 折叠、C 浮层 | 只有插件页签进条；内置两组仍由原按钮控制（这两种布局本来就不是"页签"模型） |
+| C 浮层、N 官方默认 | 只有插件页签进条；内置两组仍由宿主自己显示（这两种布局不是"页签"模型） |
 | 没人注册 | 这排页签**完全不出现**，界面和 0.2.x 一模一样 |
 
-选中哪一页记在 `localStorage["dsh-sidebar-suite:active-tab"]`；**再点一次当前页签就退回原来的组**（布局 A / C 下这是唯一的退出口）。
+选中哪一页记在 `localStorage["dsh-sidebar-suite:active-tab"]`；**再点一次当前页签就退回原来的组**（布局 C / 官方默认下这是唯一的退出口）。
 
 服务其余方法：`unregisterTab(id)`、`getTabs()`、`activateTab(id)`、`getActiveTab()`、`subscribe(fn)`（`fn(tabs, reason, activeId)`）、`getLayout()`。
 
@@ -188,7 +190,7 @@ The client half is not hot-reloaded — fully quit and reopen DSH after installi
 
 - `[data-slot="sidebar.workspaces"]` 与 `panelList` 是半稳定宿主约定，变动时插件降级而不抛错。These host contracts are semi-stable; changes degrade gracefully.
 - 浮层定位依赖 `:has()`，需要 Chromium 内核。Overlay positioning needs `:has()` (Chromium-based client).
-- 标签页模式整块隐藏工作区区域，区域内其它入口也一并隐藏，这是刻意的「一组一栏」设计。Toggle hides the whole workspaces region, which is intentional.
+- 标签页模式整块隐藏工作区区域，区域内其它入口也一并隐藏，这是刻意的「一组一栏」设计。官方默认则相反：两组都不隐藏。Toggle hides the whole workspaces region, which is intentional; the official default hides neither group.
 
 ## 会话列表默认全部展开 / Always-expanded session list（0.2.4）
 

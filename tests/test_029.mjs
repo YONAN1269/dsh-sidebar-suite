@@ -1,5 +1,6 @@
-// dsh-sidebar-suite 0.2.9 — the toolbar became a segmented control with real
-// vector icons, and the two fold buttons stopped sharing one glyph.
+// dsh-sidebar-suite 0.2.9 (updated for 0.5.0) — the toolbar became a
+// segmented control with real vector icons. 0.5.0 removed the two fold
+// buttons and layout `a` entirely; the pill now holds b / c / n.
 //
 // Nothing here drives a browser: 0.2.9 is a pure client-side change, so the
 // assertions are contracts on lib/client.js plus the docs/version wiring. The
@@ -34,24 +35,26 @@ check('bar: every mode button goes into the pill',
 check('bar: the pill is appended before the divider',
   /bar\.appendChild\(seg\)[\s\S]{0,200}?bar\.appendChild\(separator\)/.test(client))
 check('bar: divider still tracks the visible action buttons',
-  client.includes('runtime.parts = { separator: separator, context: [foldExt, foldWs, tabSwap, pop] }'))
+  client.includes('runtime.parts = { separator: separator, context: [tabSwap, pop] }'))
 
 // ---- icons ---------------------------------------------------------------
-const GLYPHS = ['a', 'b', 'c', 'fold', 'fold2', 'swap', 'pop', 'quick']
+const GLYPHS = ['b', 'c', 'n', 'swap', 'pop', 'quick']
 for (const g of GLYPHS) {
   check('icon: CSS defines a mask for "' + g + '"',
     client.includes('[data-dsbs-glyph="' + g + '"]{--dsbs-icon:url('))
 }
-// The three mode buttons share one factory call, so they set their glyph with a
-// ternary rather than three literals.
-check('icon: the mode buttons carry a, b and c',
-  /modeButton\.setAttribute\('data-dsbs-glyph', mode === 'a' \? 'a' : mode === 'b' \? 'b' : 'c'\)/.test(client))
-for (const g of ['fold', 'fold2', 'swap', 'pop', 'quick']) {
+// One factory call: the glyph is the mode id itself (b / c / n).
+check('icon: each mode button uses its own mode id as the glyph',
+  client.includes("modeButton.setAttribute('data-dsbs-glyph', mode)"))
+for (const g of ['swap', 'pop', 'quick']) {
   check('icon: a button actually asks for "' + g + '"',
     client.includes("setAttribute('data-dsbs-glyph', '" + g + "')"))
 }
-check('icon: the two fold buttons no longer share a glyph',
-  client.includes("foldWs.setAttribute('data-dsbs-glyph', 'fold2')"))
+check('0.5.0: the fold buttons and their glyphs are gone',
+  !client.includes("makeButton('fold-ext'") && !client.includes("makeButton('fold-ws'") &&
+  !client.includes('[data-dsbs-glyph="fold"]'))
+check('0.5.0: the pill still holds three modes, in order',
+  /var MODES = \['b', 'c', 'n'\]/.test(client))
 check('icon: the quick-switch button got a glyph at last', // 0.2.8 shipped it blank
   /var quick = makeButton\('quick'[\s\S]{0,800}?quick\.setAttribute\('data-dsbs-glyph', 'quick'\)/.test(client))
 check('icon: glyphs are masks, not <svg> children', // relabel() rewrites textContent
