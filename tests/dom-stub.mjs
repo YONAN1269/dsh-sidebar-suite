@@ -298,7 +298,12 @@ export class Doc {
 // DSH builds; the client only matches the semantic `panelList` suffix plus
 // `[data-slot="sidebar.workspaces"]`, so the suites must exercise the real
 // shipped markup rather than an idealised `nav.panelList` that no longer exists.
-export function buildSidebar() {
+// options.gridHost reproduces the real DSH 0.2.2-rc.2 tree (see the host's
+// SidebarRoot.tsx): a flex `scrollRegion` owns a CSS-grid `scrollArea`, which
+// pins nav.panelList to grid-row 2 and div.regionArea to grid-row 4. Tests that
+// verify the plugin's header placement MUST opt in, otherwise they silently
+// exercise the older flex-only root and miss the grid auto-placement bug.
+export function buildSidebar(options = {}) {
   const doc = new Doc()
   const root = doc.createElement('div')
   root.setAttribute('data-dsbs-test-root', '')
@@ -313,8 +318,17 @@ export function buildSidebar() {
   region.appendChild(workspaces)
   root.appendChild(nav)
   root.appendChild(region)
-  doc.body.appendChild(root)
-  return { doc, root, nav, region, workspaces }
+
+  let scrollRegion = null
+  if (options.gridHost === true) {
+    scrollRegion = doc.createElement('div')
+    scrollRegion.className = 'wtg9ga_scrollRegion'
+    scrollRegion.appendChild(root)
+    doc.body.appendChild(scrollRegion)
+  } else {
+    doc.body.appendChild(root)
+  }
+  return { doc, root, nav, region, workspaces, scrollRegion, scrollArea: root }
 }
 
 // ---------------------------------------------------------------- timers

@@ -8,10 +8,14 @@
 // answered 200, and the root child order stayed stable across samples.
 //
 // The markup contract did NOT change -- but the layout model did: rc.2 made
-// the scroll root a three-column CSS Grid, so 0.4.1 spans every column for
-// the injected boxes. This suite pins both halves: the client keys off
-// semantic suffixes and the workspaces slot (never a generated class name),
-// and the stylesheet carries the grid spanning rule.
+// div.scrollArea a CSS Grid with three columns AND four rows, pinning
+// nav.panelList to row 2 and div.regionArea to row 4. 0.4.1 spanned the
+// columns (fixing the 4px squeeze) but injected children were still
+// auto-placed into an implicit row after both pinned panels. 0.4.2 moves the
+// bar / tab strip into the flex div.scrollRegion above the grid; only a
+// third-party tab page remains a grid item. See test_035 for the placement
+// regression against the real two-level tree. This suite pins the class-name
+// contract (semantic suffixes, never a generated hash) and the stylesheet.
 import fs from 'node:fs'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
@@ -148,20 +152,21 @@ async function main() {
     /regionArea\.parentElement/.test(client))
 
   // ---- grid-based sidebar roots (rc.2) -----------------------------------
-  // rc.2 renders div.wtg9ga_scrollArea as a CSS grid with explicit columns
-  // ("4px 264px 6px" on the real renderer) and pins the host panels to
-  // column 2. An injected child with grid-column:auto lands in the 4px first
-  // column, so the control bar is 4px wide and its buttons overflow on top of
-  // the host's "工作区" heading. All three injected surfaces must span the
-  // grid; the property is inert on older flex-column roots.
-  const gridRule = client.match(/\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{([^}]*)\}/)
-  check('source: bar, tab strip and tab panel share one grid spanning rule', !!gridRule)
-  check('source: the spanning rule uses grid-column:1/-1',
-    !!(gridRule && /grid-column:\s*1\s*\/\s*-1/.test(gridRule[1])))
-  check('source: the spanning rule keeps injected boxes inside the column',
+  // Only a third-party tab page is still a grid item: it must span all three
+  // columns ("4px 264px 6px" on a real renderer) and give the two decorative
+  // edge columns back as padding. The control bar and tab strip must NOT carry
+  // a grid rule at all -- they live in div.scrollRegion, the flex parent.
+  const gridRule = client.match(/\[data-dsbs-tabpanel\]\{grid-column:1\/-1;([^}]*)\}/)
+  check('source: the tab page alone keeps a grid spanning rule', !!gridRule)
+  check('source: the spanning rule uses grid-column:1/-1', !!gridRule)
+  check('source: the spanning rule keeps the page inside the column',
     !!(gridRule && /min-width:\s*0/.test(gridRule[1]) && /max-width:\s*100%/.test(gridRule[1])))
   check('source: the spanning rule restores the host grid edge columns',
     !!(gridRule && /padding-left:\s*4px/.test(gridRule[1]) && /padding-right:\s*6px/.test(gridRule[1])))
+  check('source: bar and strip are no longer grid items',
+    !/\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{grid-column/.test(client))
+  check('source: a flex header host is resolved above the grid',
+    /\/scrollRegion\/\.test/.test(client) && /headerHost/.test(client))
 
   // ---- live: real rc.2 markup -------------------------------------------
   const rc2 = await variant('rc.2', {})
@@ -177,8 +182,10 @@ async function main() {
       && rc2.tags.indexOf('nav') > rc2.tags.indexOf('tabs')), rc2 && rc2.tags.join(','))
   check('rc.2: host groups are preserved', !!(rc2 && rc2.tags.includes('nav') && rc2.tags.includes('region')),
     rc2 && rc2.tags.join(','))
-  check('rc.2: the injected stylesheet really contains the grid spanning rule',
-    !!(rc2 && /\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{grid-column:1\/-1/.test(rc2.css)))
+  check('rc.2: the injected stylesheet carries the tab page grid rule',
+    !!(rc2 && /\[data-dsbs-tabpanel\]\{grid-column:1\/-1/.test(rc2.css)))
+  check('rc.2: the stylesheet no longer grids the control bar',
+    !!(rc2 && !/\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{grid-column/.test(rc2.css)))
 
   // ---- live: a different CSS-module hash prefix --------------------------
   const rehash = await variant('rehashed', {

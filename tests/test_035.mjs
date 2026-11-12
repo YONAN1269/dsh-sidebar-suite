@@ -1,12 +1,20 @@
-// dsh-sidebar-suite 0.4.2 — the control bar must not jump down the column
-// when the user folds the extensions / workspaces group.
+// dsh-sidebar-suite 0.4.2 — the control bar must stay ABOVE the list, in
+// every fold state, on DSH 0.2.2-rc.2's grid sidebar.
 //
-// On DSH 0.2.2-rc.2, folding re-parents the host panels: `nav.panelList` and
-// the workspaces region end up inside a wrapper one level deeper. The old
-// resolveSidebar() took whichever layer happened to hold the nav as `root`, so
-// ensureBar() moved the injected bar into that deeper container -- visually
-// below the list. This suite reproduces that exact DOM change against the real
-// client bundle and pins the header to the outer scroll area.
+// Verified against the host's own SidebarRoot.tsx / SidebarRoot.module.css:
+//   div.scrollRegion  flex column
+//     > div.scrollArea  display:grid; grid-template-rows: 8px max-content 2px max-content
+//         > nav.panelList  grid-row: 2
+//         > div.regionArea grid-row: 4  (owns [data-slot="sidebar.workspaces"])
+// A child injected into scrollArea with no explicit grid-row is auto-placed
+// into a NEW implicit row after both pinned host panels -- the bar renders
+// under the entire list. `order` cannot beat an explicit grid-row, which is
+// why the first 0.4.2 attempt (order:-30 + firstChild) did nothing on a real
+// renderer. The header now lives in scrollRegion, one level ABOVE the grid.
+//
+// This suite drives the real client bundle against a DOM stub that reproduces
+// that exact tree. Run it once with the published 0.4.1 client.js to see the
+// placement assertions fail.
 import fs from 'node:fs'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
@@ -23,8 +31,10 @@ function check(name, ok, extra) {
   else { fail += 1; console.log('FAIL  ' + name + (extra ? '  ->  ' + extra : '')) }
 }
 
-function buildClient() {
-  const tree = buildSidebar()
+function buildClient(source = client) {
+  // gridHost:true is essential: without the scrollRegion parent the test only
+  // exercises the old flex root and cannot catch grid auto-placement.
+  const tree = buildSidebar({ gridHost: true })
   const doc = tree.doc
   const storage = new Map()
   const observers = []
@@ -72,7 +82,7 @@ function buildClient() {
   sandbox.window.localStorage = sandbox.localStorage
   sandbox.globalThis = sandbox
   vm.createContext(sandbox)
-  vm.runInContext(client, sandbox, { filename: 'client.js' })
+  vm.runInContext(source, sandbox, { filename: 'client.js' })
 
   const ReactStub = { createElement: () => null, useState: (v) => [v, () => {}], useEffect() {}, Fragment: 'Fragment' }
   const mod = sandbox.__entry.factory(() => ReactStub)
@@ -96,35 +106,52 @@ function tagOf(el) {
   if (el.hasAttribute('data-dsbs-bar')) return 'bar'
   if (el.hasAttribute('data-dsbs-tabs')) return 'tabs'
   if (el.hasAttribute('data-dsbs-tabpanel')) return 'panel'
+  if (el.className && /scrollArea/.test(el.className)) return 'grid'
+  if (el.className && /scrollRegion/.test(el.className)) return 'host'
   if (el.tagName === 'NAV') return 'nav'
   return el.className && /foldGroup/.test(el.className) ? 'wrapper' : 'region'
 }
 function tags(root) { return root.children.map(tagOf).join(',') }
+function before(a, b) {
+  if (!a || !b || a.parentNode !== b.parentNode) return false
+  const list = a.parentNode.children
+  return list.indexOf(a) >= 0 && list.indexOf(b) >= 0 && list.indexOf(a) < list.indexOf(b)
+}
 
 async function main() {
   // ---- static: the fix must stay in the bundle ---------------------------
-  check('source: resolves a stable scrollArea root', /\/scrollArea\/\.test/.test(client) && /scrollRoot !== root/.test(client))
-  check('source: the bar is pinned as the first root child', /fx\.root\.firstChild !== bar/.test(client))
-  check('source: the old append-to-bottom fallback is gone', !/fx\.root\.appendChild\(bar\)/.test(client))
-  check('source: injected boxes have negative grid/flex order',
-    /\[data-dsbs-bar\]\{order:-30\}/.test(client)
-    && /\[data-dsbs-tabs\]\{order:-20\}/.test(client)
-    && /\[data-dsbs-tabpanel\]\{order:-10\}/.test(client))
-  check('source: a tab panel falls back to just under the header',
-    /runtime\.tabStrip\.nextSibling/.test(client))
+  check('source: resolves both scrollArea and its flex parent',
+    /\/scrollArea\/\.test/.test(client) && /\/scrollRegion\/\.test/.test(client))
+  check('source: exposes a dedicated headerHost outside the grid',
+    /headerHost/.test(client) && /fx\.headerHost \|\| fx\.root/.test(client))
+  check('source: bar is anchored on the scrolling viewport, not a nav',
+    /fx\.scrollArea && fx\.scrollArea\.parentNode === host/.test(client))
+  check('source: the old append-to-bottom bar fallback is gone',
+    !/fx\.root\.appendChild\(bar\)/.test(client) && !/host\.appendChild\(bar\)/.test(client))
+  check('source: only the tab page is still a grid item',
+    /\[data-dsbs-tabpanel\]\{grid-column:1\/-1/.test(client)
+    && !/\[data-dsbs-bar\],\[data-dsbs-tabs\],\[data-dsbs-tabpanel\]\{grid-column/.test(client))
+  check('source: documents why order cannot beat a pinned grid-row',
+    /grid-row/.test(client) && /`order` cannot/.test(client))
 
   const loop = buildClient()
   await settle()
-  const { root, nav, region, doc } = loop.tree
-  const bar = root.querySelector('[data-dsbs-bar]')
+  const { root, scrollRegion, nav, region, doc } = loop.tree
+  const bar = doc.querySelector('[data-dsbs-bar]')
 
+  check('tree: stub really has a flex host above the grid',
+    !!scrollRegion && root.parentNode === scrollRegion && !!root.className.match(/scrollArea/))
   check('expanded: a control bar exists', !!bar)
-  check('expanded: bar is the first child of the scroll root',
-    !!bar && root.firstChild === bar, tags(root))
-  check('expanded: bar parent is the scroll root', !!bar && bar.parentNode === root)
-  const expandedIndex = bar ? root.children.indexOf(bar) : -1
+  // THE regression: a bar inside scrollArea is a grid item and lands in an
+  // implicit row after the host panels. It must NOT be a grid item at all.
+  check('expanded: bar is NOT a child of the CSS-grid scrollArea',
+    !!bar && bar.parentNode !== root, bar && bar.parentNode && bar.parentNode.className)
+  check('expanded: bar lives in the flex header host',
+    !!bar && bar.parentNode === scrollRegion)
+  check('expanded: bar sits above the scrolling viewport',
+    !!bar && before(bar, root), tags(scrollRegion))
 
-  // A consumer page must stay between the header and the host panels.
+  // A consumer page stays in the grid, but the bar and tab strip stay out.
   loop.service.registerTab({
     id: 'fold-probe',
     title: '折叠探针',
@@ -133,12 +160,18 @@ async function main() {
   await settle()
   loop.service.activateTab('fold-probe')
   await settle()
-  check('expanded: tab strip and page follow the bar, before the host panels',
-    /^bar,tabs,panel/.test(tags(root)), tags(root))
+  const strip = doc.querySelector('[data-dsbs-tabs]')
+  const panel = doc.querySelector('[data-dsbs-tabpanel]')
+  check('expanded: tab strip also lives outside the grid',
+    !!strip && strip.parentNode === scrollRegion && strip.parentNode !== root)
+  check('expanded: header order is bar, tabs, then the grid viewport',
+    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
+  check('expanded: a consumer page stays inside the grid viewport',
+    !!panel && panel.parentNode === root, tags(root))
 
   // ---- the exact DOM change a fold triggers on rc.2 ----------------------
-  // The host wraps both panels in a group container one level deeper. With the
-  // old resolver, `root` became that wrapper and the bar was moved into it.
+  // The host wraps both panels in a group container one level deeper. The old
+  // resolver took whichever layer happened to hold the nav as `root`.
   const wrapper = doc.createElement('div')
   wrapper.className = 'wtg9ga_foldGroup'
   root.appendChild(wrapper)
@@ -151,35 +184,38 @@ async function main() {
   await settle()
 
   check('folded: nav really is one level deeper now', nav.parentNode === wrapper)
-  check('folded: bar stayed in the outer scroll root', bar.parentNode === root, tags(root))
-  check('folded: bar is still the first child', root.firstChild === bar, tags(root))
-  check('folded: bar index did not move', root.children.indexOf(bar) === expandedIndex,
-    expandedIndex + ' -> ' + root.children.indexOf(bar))
-  check('folded: only one control bar survives', root.querySelectorAll('[data-dsbs-bar]').length === 1)
-  check('folded: tab strip and page still follow the bar',
-    /^bar,tabs,panel/.test(tags(root)), tags(root))
-  check('folded: the host wrapper stays after the injected header',
-    root.children.indexOf(wrapper) > root.children.indexOf(bar), tags(root))
+  check('folded: bar stayed in the flex header host',
+    bar.parentNode === scrollRegion, tags(scrollRegion))
+  check('folded: bar is still above the grid viewport',
+    before(bar, root), tags(scrollRegion))
+  check('folded: only one control bar survives',
+    doc.querySelectorAll('[data-dsbs-bar]').length === 1)
+  check('folded: header order is unchanged',
+    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
+  check('folded: host wrapper stays inside the grid, below the header',
+    wrapper.parentNode === root, tags(root))
 
   // ---- the host may also drop the nav entirely while collapsed -----------
   wrapper.removeChild(nav)
   if (observer) observer.callback([])
   await settle()
   await settle()
-  check('nav removed: bar still pinned to the scroll root first slot',
-    bar.parentNode === root && root.firstChild === bar, tags(root))
+  check('nav removed: bar still in the flex host, above the grid',
+    bar.parentNode === scrollRegion && before(bar, root), tags(scrollRegion))
 
   // ---- no observer/paint feedback loop from the re-parenting -------------
-  const before = root.children.length
+  const beforeCount = scrollRegion.children.length
   for (let i = 0; i < 20; i++) {
     if (observer) observer.callback([])
     await Promise.resolve()
     await Promise.resolve()
   }
   await settle()
-  check('20 repaints do not change the root child count', root.children.length === before,
-    before + ' -> ' + root.children.length)
-  check('20 repaints leave the bar in slot 0', root.firstChild === bar, tags(root))
+  check('20 repaints do not change the header host child count',
+    scrollRegion.children.length === beforeCount,
+    beforeCount + ' -> ' + scrollRegion.children.length)
+  check('20 repaints leave the header in the same order',
+    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
 
   console.log('')
   console.log(pass + ' passed, ' + fail + ' failed')

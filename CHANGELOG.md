@@ -8,15 +8,16 @@
 
 ---
 
-## 未发布 / Unreleased — 折叠分组时控制栏不再跳到列表下方（2026-11-12）
+## 未发布 / Unreleased — 控制栏固定在列表上方，不再跳到下方（2026-11-12）
 
 > ⚠️ **npm 上的 `0.4.1` 不含这个修复。** 以下改动目前只在本地仓库与本机 `link:` 开发版里；外部用户要等下一个发布版本。The published 0.4.1 does not contain this fix yet.
 
-- **问题**：在布局 A 下点右侧那两个「收起扩展 / 收起工作区」箭头后，控制栏会从侧栏上方**跳到列表下方**。展开时又回到上方，来回跳，交互很别扭。The layout toolbar jumped below the list whenever a group was folded.
-- **根因**：宿主折叠时会把 `nav.panelList` 与工作区容器**重挂到深一层的分组容器**里。`resolveSidebar()` 原本把「恰好包含 nav 的那一层」当 `root`，于是 `root` 在展开 / 折叠两种状态下不是同一个元素；`ensureBar()` 发现控制栏不在新 `root` 里，就把它搬进那个更深的容器（旧的兜底分支还会直接 `appendChild` 到末尾）。Folding re-parents the host panels one level deeper; the resolver picked that layer as the root, so the bar was moved into it.
-- **修法**：`root` 固定为**最外层的 `scrollArea` 滚动容器**（只匹配 `scrollArea` 这个语义后缀，不硬编码 CSS-module 哈希前缀），它在各种折叠状态下都是同一个元素；控制栏恒为该 `root` 的第一个子节点，正常重绘**完全不改动 DOM**（不会重演 0.3.0 的观察器自激）。另外给控制栏 / 页签条 / 插件面板加 `order:-30/-20/-10`，即便宿主又重排了面板，这三块也始终占据最前面的视觉行；`order` 在旧版 flex 侧栏里同样生效且顺序不变。The root is pinned to the outer scroll container, the bar is always its first child, and negative `order` keeps all three injected boxes above the host panels.
-- **三方插件面板的兜底**：`root` 上移到滚动容器后，宿主面板不再是它的直接子节点，`placeTabPanel()` 原来的 `appendChild` 会把插件页丢到整列末尾；现在改为紧跟在页签条 / 控制栏之后。A plugin page now stays directly under the header instead of falling to the bottom.
-- **验证**：新增 `tests/test_035.mjs`（19 项），用真实 `lib/client.js` 复现「宿主把 nav 与工作区重挂进 wrapper」这一变化。**把代码临时回退到 0.4.1 跑同一套测试，6 项行为断言失败**（`bar` 被搬进 `wrapper`、索引 `0 → -1`），修复后全过；另含 20 次观察器驱动重绘不新增节点、不改变控制栏位置。`npm test` 扩为 13 套。
+- **问题**：布局工具条（三个布局图标 + 收起箭头）出现在**整个插件列表的下方**；点右侧「收起扩展 / 收起工作区」箭头后位置还会变，展开与合起时上下跳，交互很别扭。The layout toolbar sat below the whole panel list and jumped around when a group was folded.
+- **更正上一次的判断**：本条下面曾经写过「宿主折叠时把面板重挂到更深一层，`root` 变了所以控制栏被搬走」——**这个解释是错的**。解包 DSH `app.asar` 里的 `SidebarRoot.tsx` / `SidebarRoot.module.css` 后确认，宿主 JSX 结构固定，折叠分组并不会重挂 `scrollArea` 的两块面板。The earlier "re-parenting" explanation was wrong; the host JSX is stable.
+- **真正的根因**：rc.2 的 `div.scrollArea` 是 CSS Grid，**四行** `grid-template-rows: 8px max-content 2px max-content`，宿主把 `nav.panelList` 显式钉在 `grid-row: 2`、`div.regionArea` 钉在 `grid-row: 4`。插件注入的节点没有指定行，只能被自动排到**隐式的新行（第 5 行及以后）**，也就是永远排在两个宿主面板之后。`0.4.1` 只补了 `grid-column:1/-1`（修好了 4px 挤压），没解决行；上一次尝试再加 `order:-30/-20/-10` 也无效 —— **`order` 无法覆盖宿主显式指定的 `grid-row`**。The host pins its panels to explicit grid rows, so unpositioned children are auto-placed after them; `order` cannot override an explicit row.
+- **修法**：把控制栏与页签条**移出 grid**，放进它的父级 `div.scrollRegion`（始终是 flex 列，React 不会重建这一层）。在那里 DOM 顺序就是视觉顺序，展开（grid）与收起成图标条（宿主把 `scrollArea` 切成 flex 列）两种状态都一样。`resolveSidebar()` 新增 `scrollArea` / `headerHost` 两个解析结果，仍只匹配语义后缀、不硬编码 CSS-module 哈希。第三方 tab 的页面仍是 grid item，保留 `grid-column:1/-1` 与 4px/6px 内边距；浮层（布局 c）的定位基准同步从 `scrollArea` 改为 `scrollRegion`，否则会盖住工具条。The bar and tab strip now live in the flex header host; only a plugin page stays in the grid.
+- **验证（这次是真机，不是猜）**：用独立 `--user-data-dir` 起了第二个 DSH 实例开了调试端口，**没有关闭或干扰用户正在用的窗口**。CDP 实测：`gridDisplay=grid`、`gridTemplateRows=8px 448px 2px 0px`、`navGridRow=2`、`regionGridRow=4`；修复后 `barParent=wtg9ga_scrollRegion`、`barIsGridItem=false`、工具条底边 172px 与 grid 顶边 172px 严丝合缝、`scrollRegion` 子节点顺序 `[BAR, TABS, scrollArea, scrollFade]`、`scrollArea` 里只剩宿主自己的两个面板并**未被污染**。截图确认工具条在「新会话」下方、插件列表上方，独占一行且无重叠。再依次点 `fold` / `fold2`、两组都隐藏、恢复，共 5 个状态采样，工具条父容器与 top/bottom **完全不变**。
+- **回归测试**：`tests/dom-stub.mjs` 新增 `gridHost` 选项复刻真实的两层树；`tests/test_035.mjs` 重写为 23 项，专测「工具条不是 grid item、永远在滚动视口之前」；`tests/test_034.mjs` 的样式断言同步改为「只有第三方 tab 页面仍带 grid 规则」。**把 `lib/client.js` 临时回退到已发布的 0.4.1 跑同一套测试，12 项断言失败**（其中工具条被塞进 `scrollArea`、位置在列表之后），换回修复版全过。`npm test` 13 套全绿、`npm run check` 通过。
 
 ---
 
