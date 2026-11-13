@@ -10,7 +10,7 @@
 
 ## 0.6.0 — 临时按钮改挂宿主官方插槽（2026-11-13）
 
-**只动客户端（`lib/client.js`），不需要从托盘退出 DSH**：装完后新开一个侧栏或刷新窗口就生效。Client-only; no tray restart needed.
+**相对 `0.5.1` 只动客户端（`lib/client.js`），不需要从托盘退出 DSH**：装完后新开一个侧栏或刷新窗口就生效。**如果你是从 `0.5.0` 或更早升上来**，包里还带着 `0.5.1` 的宿主侧修复（删除临时会话前的路径校验），那一项仍然要从托盘彻底退出 DSH 再开一次才生效。Client-only relative to 0.5.1; upgrading from 0.5.0 or earlier still needs one tray restart for the host-side delete-path fix.
 
 > 起因：DSH `0.2.2-rc.3` 给「新会话」这一行开了官方扩展位。我们原来那套「压窄新会话 → 用负边距把临时按钮拉回上一行」的做法，是按 rc.2 之前的宿主结构写的，继续留着就是每次宿主改 DOM 都要跟着修一次。0.6.0 把它换成官方插槽，同时修掉一个有失效的配置项。
 
