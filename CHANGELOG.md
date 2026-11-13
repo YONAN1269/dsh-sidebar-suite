@@ -8,6 +8,18 @@
 
 ---
 
+## 未发布 / Unreleased
+
+### 市场截图换成实拍 / Storefront screenshots are now real captures
+
+`screenshots.json` 原本指向 `assets/screenshots/screenshot-1~3.png`，那三张是 `0.2.5` 时期的示意图，**里面画的还是 `0.5.0` 已经删掉的「折叠」布局**，跟插件现在的样子对不上。现在改为指向 `assets/real-screenshots/` 下三张真实运行截图：浮层布局、标签页布局、控制栏特写（会话标题与账号名已打码）。
+
+- 旧的三张示意图已删除，历史留在 git 里；`package.json` 的 `files` 白名单从 `assets/screenshots/*.png` 换成 `assets/real-screenshots/*.png`。
+- 体积变小：新三张合计 257 KB，原来三张 514 KB；`npm pack` 仍是 **21 个文件**，包体从约 700 KB 降到 **450 KB**。
+- 现有页面不受影响：dsh.so 的详情页目前没有截图区块，这个字段是为以后接入截图的市场客户端和收录流程准备的。`screenshots.json` 的路径与文件保持一致，谁读都不会拿到 404。The field is inert today; it now points at images that actually match the current UI instead of a removed mode.
+
+---
+
 ## 0.5.1 — 删除临时会话前先校验路径（2026-11-13）
 
 **这次只动宿主侧（`lib/temp-session-host.mjs`）的删除路径判断**，所以**升级后要从托盘彻底退出 DSH 再重开一次**才能用上新代码。This patch only touches the host-side delete path; quit DSH from the tray and reopen once after upgrading.

@@ -57,7 +57,7 @@
     "LICENSE",
     "assets/*.jpg",
     "assets/*.png",
-    "assets/screenshots/*.png"
+    "assets/real-screenshots/*.png"
   ],
   "dsh": {
     "bundle": {

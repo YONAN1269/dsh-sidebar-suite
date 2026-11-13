@@ -81,7 +81,7 @@ check('package: version is valid semver', /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?
 check('package: ships the step-by-step guide in the tarball', pkg.files.includes('使用说明.md'))
 check('package: ships the changelog in the tarball', pkg.files.includes('CHANGELOG.md'))
 check('package: ships screenshots.json in the tarball', pkg.files.includes('screenshots.json'))
-check('package: ships the PNG icon and screenshot images', pkg.files.includes('assets/*.png') && pkg.files.includes('assets/screenshots/*.png'))
+check('package: ships the PNG icon and screenshot images', pkg.files.includes('assets/*.png') && pkg.files.includes('assets/real-screenshots/*.png'))
 check('package: exposes one-command npm test', /tests\/test_020\.mjs/.test((pkg.scripts || {}).test || ''))
 check('package: exports the detail document', pkg.exports['./DETAIL.md'] === './DETAIL.md')
 check('package: exports the locale files', pkg.exports['./locale/*.json'] === './locale/*.json')
