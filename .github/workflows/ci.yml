@@ -40,10 +40,12 @@ jobs:
         run: |
           node --input-type=module -e "import fs from 'node:fs'; for (const f of ['package.json','locale/zh.json','locale/en.json','screenshots.json']) { JSON.parse(fs.readFileSync(f,'utf8')); console.log('JSON OK', f) }"
 
-      - name: Run the six offline regression suites
+      - name: Run the offline regression suites
         run: npm test
 
+      # 0.6.0 swapped the mockups under assets/screenshots/ for real captures
+      # under assets/real-screenshots/. Keep this list in sync with package.json.
       - name: Verify the published tarball contains the docs and assets
         run: |
           npm pack --dry-run --json > pack.json
-          node --input-type=module -e "import fs from 'node:fs'; const j=JSON.parse(fs.readFileSync('pack.json','utf8'))[0]; const names=j.files.map(f=>f.path); for (const f of ['使用说明.md','CHANGELOG.md','DETAIL.md','screenshots.json','assets/icon-180.png','assets/screenshots/screenshot-1.png']) { if (!names.includes(f)) { console.error('MISSING from tarball:', f); process.exit(1) } console.log('packed:', f) } console.log('version', j.version, 'files', names.length)"
+          node --input-type=module -e "import fs from 'node:fs'; const j=JSON.parse(fs.readFileSync('pack.json','utf8'))[0]; const names=j.files.map(f=>f.path); for (const f of ['使用说明.md','CHANGELOG.md','DETAIL.md','screenshots.json','assets/icon-180.png','assets/real-screenshots/01-overlay.png','assets/real-screenshots/02-tabs.png','assets/real-screenshots/03-control-bar.png']) { if (!names.includes(f)) { console.error('MISSING from tarball:', f); process.exit(1) } console.log('packed:', f) } console.log('version', j.version, 'files', names.length)"
