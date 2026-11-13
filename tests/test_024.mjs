@@ -16,9 +16,14 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
 const CLIENT = ROOT + '/lib/client.js'
 const HOST = ROOT + '/lib/temp-session-host.mjs'
-const CONFIG = ROOT + '/temp-session-config.txt'
-const originalConfig = readFileSync(CONFIG, 'utf8')
-process.env.DSH_HOME = mkdtempSync(join(tmpdir(), 'dsbs-024-'))
+const TEMPLATE = ROOT + '/temp-session-config.txt'
+const HOME = mkdtempSync(join(tmpdir(), 'dsbs-024-'))
+process.env.DSH_HOME = HOME
+// 0.6.1: the live config lives in DSH home; the packaged file is a template.
+const CONFIG = HOME + '/dsh-sidebar-suite/temp-session-config.txt'
+const originalConfig = readFileSync(TEMPLATE, 'utf8')
+fs.mkdirSync(HOME + '/dsh-sidebar-suite', { recursive: true })
+fs.writeFileSync(CONFIG, originalConfig, 'utf8')
 
 let pass = 0
 let fail = 0

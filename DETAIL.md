@@ -133,6 +133,8 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 **升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
+**0.6.1 起配置文件的存放位置变了 / The config moved in 0.6.1** — 可写副本在 `~/.dsh/dsh-sidebar-suite/temp-session-config.txt`（Windows：`C:\Users\12691\.dsh\dsh-sidebar-suite\temp-session-config.txt`），和跟踪库 `temp-sessions.json` 同目录。首次启动把包内模板复制过去，此后包内文件只读；这样 `pnpm add` 升级替换包目录时不会把用户设置冲掉。`status` / `config` / `probe` 都会返回 `configFile`（真实完整路径）和 `configMigrated`（本次是否发生过迁移）。 / The writable copy lives in DSH home next to `temp-sessions.json`; the packaged file is a read-only factory template seeded on first boot, so upgrades cannot reset user settings. `status` / `config` / `probe` expose the real `configFile` path and a `configMigrated` flag.
+
 > 组合包自带的 `cordis.patch.yml` 会自动挂载，不要再往 profile 的 `cordis.patch.yml` 里加同名行，否则会加载两次。
 > The bundle patch mounts the plugin automatically; do not add a manual mount line or it loads twice.
 
@@ -161,11 +163,11 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 **为什么删除是安全的**：`dsh-session-query-sqlite` 的 `_reconcile()` 会拿「磁盘上实际存在的会话」和索引行对比，多出来的行直接 `persistentDeletes`，因此删目录之后搜索索引会自愈，不会留下点不开的幽灵会话。
 
-配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `TEMP_ROW_MENU` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 9 项都能在详情页设**，用记事本改等号右边也行，保存后约 3 秒自动生效，不用重启。
+配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `TEMP_ROW_MENU` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 9 项都能在详情页设**，用记事本改 DSH 数据目录里那份文件（`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`）的等号右边也行，保存后约 3 秒自动生效，不用重启。
 
-**详情页设置（0.2.2）**：插件详情页顶部卡片新增「临时会话自动删除」区块 —— 「退出 DSH 时删除」和「每天定时清理 + 时间」两个独立开关。它不走 `configForms`，而是 `GET/POST /api/dsh-temp-session.config` 交给 Host 半执行，因为**只有一个数据源**：`temp-session-config.txt`。Host 半按行替换（`KEY=value` 只换 `= ` 右边），注释、空行、键顺序原样保留，用户手写的内容不会丢；缺失的键追加到末尾。保存后立即 `restartScheduler()`，无需重启。
+**详情页设置（0.2.2）**：插件详情页顶部卡片新增「临时会话自动删除」区块 —— 「退出 DSH 时删除」和「每天定时清理 + 时间」两个独立开关。它不走 `configForms`，而是 `GET/POST /api/dsh-temp-session.config` 交给 Host 半执行，因为**只有一个数据源**：DSH 数据目录里的 `temp-session-config.txt`。Host 半按行替换（`KEY=value` 只换 `= ` 右边），注释、空行、键顺序原样保留，用户手写的内容不会丢；缺失的键追加到末尾。保存后立即 `restartScheduler()`，无需重启。
 
-**全部设置图形化 + 热重载（0.2.8）**：详情页新增「侧栏与临时会话」卡，把剩下的 5 个键也做成开关 / 选项按钮 / 数字框，并加了一个「立即清理临时会话」按钮。至此 `temp-session-config.txt` 里**没有任何一项**需要用户手改文本。Host 半在每次 `status` / `config` / `probe` 请求时比对文件的 `mtime + size`，变化就重解析、重排定时清理计划、递增 `configRevision`；Client 半每 2.5–3 秒轮询一次，只在版本变化时原地重应用（按钮显隐、按钮摆法、CHAT 兼容策略、会话全展开）。`saveConfig()` 写盘前也会先重新读文件，避免 UI 的一次保存覆盖掉用户刚刚手改的其它行。不用 `fs.watch`，因为编辑器保存通常是「写临时文件再改名」，且监听器会拖住宿主进程。 / Every remaining key now has a control; a stamp-based reload makes both the switches and Notepad edits live within seconds, with no restart and no lost hand edits.
+**全部设置图形化 + 热重载（0.2.8）**：详情页新增「侧栏与临时会话」卡，把剩下的 5 个键也做成开关 / 选项按钮 / 数字框，并加了一个「立即清理临时会话」按钮。至此 DSH 数据目录里的 `temp-session-config.txt` **没有任何一项**需要用户手改文本。Host 半在每次 `status` / `config` / `probe` 请求时比对文件的 `mtime + size`，变化就重解析、重排定时清理计划、递增 `configRevision`；Client 半每 2.5–3 秒轮询一次，只在版本变化时原地重应用（按钮显隐、按钮摆法、CHAT 兼容策略、会话全展开）。`saveConfig()` 写盘前也会先重新读文件，避免 UI 的一次保存覆盖掉用户刚刚手改的其它行。不用 `fs.watch`，因为编辑器保存通常是「写临时文件再改名」，且监听器会拖住宿主进程。 / Every remaining key now has a control; a stamp-based reload makes both the switches and Notepad edits live within seconds, with no restart and no lost hand edits.
 
 **定时清理（0.2.2）的实现要点**：
 

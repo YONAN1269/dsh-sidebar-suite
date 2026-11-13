@@ -1,10 +1,39 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
+
+---
+
+## 0.6.1 — 采纳社区收录评审的两条建议（2026-11-13）
+
+> 起因：[dsh-community-plugins PR #105](https://github.com/zhu1090093659/dsh-community-plugins/pull/105) 的 APPROVED 评审留了两条「后续版本可顺手做」的建议：把 `lib/temp-session-host.mjs` 的 `temp-session-config.txt` 迁到 `~/.dsh` 数据目录（避免升级覆盖），以及把定时清理挂到 `ctx.effect`。两条都做了。评审里写的 `/home/zcl/.dsh` 是维护者本机路径，通用规则就是 DSH 的 `~/.dsh`（可用 `DSH_HOME` 覆盖）。该 PR 已合并，社区索引条目不受影响。
+
+**这次改的是宿主端 `lib/temp-session-host.mjs`，所以装完要从托盘彻底退出 DSH 再开一次才生效**（客户端这次没有功能性改动，只同步了一句说明文案）。
+
+### 1. 配置文件搬出插件包
+
+- 实际读写路径改为 `~/.dsh/dsh-sidebar-suite/temp-session-config.txt`，和跟踪库 `temp-sessions.json` 同目录；设了 `DSH_HOME` 就以它为准。
+- 包内同名的 `temp-session-config.txt` 仍随 npm 包发布，但降级为**出厂模板**：只在数据目录还没有配置时读一次并复制过去，此后**再也不写**。详情页开关和记事本手改都只落数据目录那份。
+- 因此 `pnpm add dsh-sidebar-suite@0.6.1` 这类升级不会再把手改的 9 个开关重置回默认值。⚠️ **一次性说明**：如果以前手改的是**包内**那个文件，包管理器在升级那一刻可能已经把它换成新模板，旧值救不回来 —— 在详情页把开关重设一次即可，从 0.6.1 起不会再丢。
+- `status` / `config` / `probe` 新增 `configFile`（真实完整路径）、`configMigrated`、`configTemplate`；详情页底部显示的就是 `configFile`。
+
+### 2. 定时清理交给宿主生命周期
+
+- `register()` 改用 `bindSchedulerEffect(hostCtx)`：宿主提供 `ctx.effect` 时由它注册定时器，插件 dispose / 重新 apply 时通过返回的 disposer 调 `stopScheduler()`，不再留一个游离的 `setInterval`；重复 apply 不会叠加 effect。
+- 不提供 `ctx.effect` 的旧宿主 / 测试替身自动退回原来的独立定时器，行为不变。`schedule.managed` 会标明当前用的是哪种。
+
+### 回归 / Tests
+
+- 新增 `tests/test_039.mjs`（33 项）：路径落在 DSH home、首次启动从模板播种、写入不碰包内文件、二次启动不覆盖用户值、切换 `DSH_HOME`、effect disposer 能停表、重复 apply 不叠加。
+- `test_022` / `test_024` / `test_028` 改为在临时 `DSH_HOME` 里准备配置副本，不再改写工作副本；`package.json` 的 `test` 串加入 `test_039`。全套 `npm test` 与 `npm run check` 通过。
+
+### 文档
+
+README / DETAIL / 使用说明 里所有「配置文件在插件源码目录」的旧路径改为 `C:\Users\12691\.dsh\dsh-sidebar-suite\temp-session-config.txt`，并明确包内那份是只读模板；「二、文件都在哪」的表格拆成「实际配置」和「出厂模板」两行。详情页的说明文案同步。
 
 ---
 

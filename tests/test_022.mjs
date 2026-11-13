@@ -1,8 +1,8 @@
 // dsh-sidebar-suite 0.2.2 — temporary-session cleanup policy tests.
 //
-// Runs the real Host half against a throwaway DSH_HOME. The only shared state
-// with the working copy is temp-session-config.txt: it is written by
-// saveConfig(), so it is backed up up front and restored in `finally`.
+// Runs the real Host half against a throwaway DSH_HOME. Since 0.6.1 the
+// writable config lives inside DSH_HOME too, so this suite is fully isolated:
+// the packaged temp-session-config.txt is only read as a starting template.
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -11,12 +11,14 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 // Relocatable: <repo>/tests -> <repo>. No machine-specific paths (CI-safe).
 const PLUGIN = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
 const HOST = join(PLUGIN, 'lib', 'temp-session-host.mjs')
-const CONFIG = join(PLUGIN, 'temp-session-config.txt')
+const TEMPLATE = join(PLUGIN, 'temp-session-config.txt')
 
 const HOME = mkdtempSync(join(tmpdir(), 'dsbs-022-'))
 process.env.DSH_HOME = HOME
-
-const originalConfig = readFileSync(CONFIG, 'utf8')
+const CONFIG = join(HOME, 'dsh-sidebar-suite', 'temp-session-config.txt')
+const originalConfig = readFileSync(TEMPLATE, 'utf8')
+mkdirSync(join(HOME, 'dsh-sidebar-suite'), { recursive: true })
+writeFileSync(CONFIG, originalConfig, 'utf8')
 
 let pass = 0
 let fail = 0
@@ -147,7 +149,6 @@ try {
   if (host) {
     try { host.state.tracked = [] } catch (error) { void error }
   }
-  writeFileSync(CONFIG, originalConfig, 'utf8')
   try { rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
 }
 
