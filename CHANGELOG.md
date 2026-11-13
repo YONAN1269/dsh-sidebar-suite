@@ -1,10 +1,37 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
+
+---
+
+## 0.5.1 — 删除临时会话前先校验路径（2026-11-13）
+
+**这次只动宿主侧（`lib/temp-session-host.mjs`）的删除路径判断**，所以**升级后要从托盘彻底退出 DSH 再重开一次**才能用上新代码。This patch only touches the host-side delete path; quit DSH from the tray and reopen once after upgrading.
+
+> 起因是收录后收到的一条建议：删除临时会话前应当拒绝 `./..` 这类标识，并确认目标确实在会话目录内。核对后发现这不是加固建议，而是**已经存在的漏洞**，0.5.0 及更早版本都会中招。Reported after listing: reject `.`/`..` identifiers and confirm the target sits inside the sessions directory. It turned out to be a live bug, not a hardening nice-to-have.
+
+### 安全问题 / The bug
+
+- **`normalizeId` 的字符类允许点**：`/^[A-Za-z0-9._:-]+$/` 放行 `.`、`..`、`a..b`。随后 `join(root, workspace, '..')` 在路径层折叠成**工作区目录本身**，`rm -r` 就删掉了该工作区下的**全部会话**。
+- **真正的触发面不是网页，而是存储文件**：`?sessionId=..` 这条路由要求 id 在临时集合里（`not a temporary session`），单靠它删不掉东西；但 `temp-sessions.json` 是明文 JSON，一旦里面出现 `..`（手改、旧版本写坏、别的工具写错），**启动清理和退出清理会照单全收**，每个工作区被删一遍。The store file, not the route, is the real attack surface.
+- **实测确认**：新增的 `tests/test_037.mjs` 在已发布的 `0.5.0` 包上跑，16 项里 **8 项失败**，其中「启动清理保留 ws-a / ws-b 的普通会话」两条直接失败——两个工作区的会话目录全被删掉；换成 0.5.1 全过。
+
+### 修法 / What changed
+
+- **id 层直接拒绝**：`isUnsafeId` 把 `.`、`..`、`...` 以及任何含 `..` 的字符串判为非法，`normalizeId` 先过这道再走字符类。正常 id 是 `session-<uuid>`，不需要点号连写，拒绝它们零成本。Reject dot-runs before building any path.
+- **路径层再校验一次**（`safeSessionDir`）：目标必须是 `<sessions>/<工作区>/<id>` **正好两层**，`relative()` 不得以 `..` 开头；工作区名本身也不能含分隔符或 `..`；再用 `realpath` 确认解析后的真实路径仍在真实的 sessions 根内——这一条同时挡住大小写、短文件名、junction 之类的花样。
+- **不跟随符号链接**：目标用 `lstat` 必须是真目录，symlink 一律跳过，避免 `rm -r` 顺着链接删到别处。
+- **三处删除全部走同一个闸门**：`sessionDirsSync`（谁算「存在」）、`removeSession` / `removeSessionSync`（真删）现在都只接受 `safeSessionDir` 的返回值；`removeSession*` 对非法 id 直接返回 0，连投影缓存都不碰。
+- **坏 id 不会被反复重试**：非法 id 在 `normalizeId` 阶段就被丢，`loadStore` 读出来即过滤，下次写回时从文件里消失。
+
+### 验证 / Verification
+
+- 新增 `tests/test_037.mjs`：7 种恶意 id（`..`、`.`、`%2e%2e`、`..%2f..`、`..%5c..`、`a..b`、`%2e`）必须被路由以 400 拒绝且不动磁盘；正常 id 仍能删；**投毒的存储文件不能让清理越界**；symlink 不被跟随。`npm test` 扩为 15 套全绿、`npm run check` 通过。
+- `tests/test_036.mjs` 里两条写死 `0.5.0` 的版本断言改成「≥ 0.5.0」+「客户端 `VERSION` 与 package.json 一致」，否则每个补丁版都要改测试。
 
 ---
 

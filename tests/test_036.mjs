@@ -156,9 +156,13 @@ async function main() {
     /'mode\.n': 'Default'/.test(client) && /'mode\.n': '官方默认'/.test(client))
   check('0.5.0: schema accepts b/c/n and keeps a as an alias',
     /\.union\(\['b', 'c', 'n', 'a'\]\)/.test(index))
-  check('0.5.0: package version is 0.5.0', pkg.version === '0.5.0')
-  check('0.5.0: client VERSION matches the package', /var VERSION = '0\.5\.0'/.test(client))
-  check('0.5.0: changelog has a 0.5.0 section', /^## 0\.5\.0/m.test(changelog))
+  // Version-pinned on purpose, but only as a floor: this suite owns the 0.5.x
+  // layout contract, so a later patch (0.5.1 fixed the delete-path guard) must
+  // not force an edit here. The lockstep check below is the real invariant.
+  check('0.5.0+: package version is at least 0.5.0', pkg.version.localeCompare('0.5.0', 'en', { numeric: true }) >= 0)
+  const embedded = (/var VERSION = '([^']+)'/.exec(client) || [])[1] || ''
+  check('0.5.0+: client VERSION matches the package', embedded === pkg.version, embedded + ' vs ' + pkg.version)
+  check('0.5.x: changelog has a 0.5.0 section', /^## 0\.5\.0/m.test(changelog))
   check('0.5.0: README documents the official default', /官方默认 \/ Default/.test(readme))
   check('0.5.0: the guide explains the a -> n migration',
     /mode: a/.test(guide) && /官方默认/.test(guide))

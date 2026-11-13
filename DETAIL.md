@@ -184,6 +184,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 - **只拦自己的行**。`onTempContextMenu` 先解析 `data-row-key`，id 不在 `tempIds` 里就直接 `return`，`preventDefault()` 根本不会执行。所以宿主或别的插件的右键菜单在普通会话上照常工作 —— 这是这条功能唯一的兼容性风险，用「不碰」消掉它。真撞上了还有 `TEMP_ROW_MENU=off` 整条让出。
 - **「保留」复用已有后端**。0.2.0 起就有 `POST /api/dsh-temp-session.untrack`，只是当时没有 UI 入口。所以转正是纯前端改动，Host 半一行没动。
 - **「删除」新增路由，且只能删 tracked**。`POST /api/dsh-temp-session.remove?sessionId=…` 走 `removeOne()`：先 `removeSession()` 删目录，再用 `sessionDirsSync()` 确认真的空了；没删掉就 `hideSession()` 归档隐藏。关键在**只接受 `state.tracked` 里的 id，且在调用任何文件操作之前就拒绝** —— 这条路由能从页面调到，不能变成「按 id 删任意会话」的通用删除接口。删除失败时不从 tracked 移除，下次启动继续重试（与 `purgeAll` 一致），否则会留下「已经不算临时、却还在磁盘上」的孤儿。
+- **id 与目标路径各校验一次（0.5.1）**。只信 tracked 还不够：`normalizeId` 的字符类允许 `.`，而 `join(root, workspace, '..')` 会折叠成工作区目录本身，`rm -r` 就会删掉该工作区下的全部会话；存储文件 `temp-sessions.json` 是明文，被写入 `..` 时启动 / 退出清理会照单执行。所以现在两层都拦：`isUnsafeId` 把 `.`/`..`/任何含 `..` 的串判为非 id；`safeSessionDir()` 再要求目标正好是 `<sessions>/<工作区>/<id>` 两层、`relative()` 不以 `..` 开头、`realpath` 后仍在真实的 sessions 根内，且 `lstat` 必须是真目录（symlink 一律跳过，避免 `rm -r` 顺着链接删到别处）。回归见 `tests/test_037.mjs`——同一套测试跑已发布的 0.5.0 会失败 8 项，其中包括两个工作区的会话目录被整个删掉。
 
 菜单本身：`role="menu"` + `role="menuitem"`，首项自动获得焦点；方向键在两项间循环，`Esc` 关闭并把焦点还给那一行，点外部 / `scroll` / `resize` 都会关闭（菜单是 `position:fixed`，不关就会飘在错误的行旁边）。视口边缘翻转用 `getBoundingClientRect()` 实测，读不到时退回 `offsetWidth`/`offsetHeight` 与保守的 220×96。
 
