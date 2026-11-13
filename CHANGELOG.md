@@ -31,7 +31,7 @@ We now register an occupant for that slot and mount the Temp button into the emp
 
 ### 回归 / Tests
 
-新增 `tests/test_038.mjs`（18 项）盯住这次的结构契约：插槽注册带 `id`、挂载优先找座位、旧路径还在、`calc(100% - 92px)` 与 `-44px` 只允许出现在 dom 模式作用域里、own 标记必须是字面量 `own`。`tests/test_023.mjs` 的两条"只注册一个组件"断言随之改成两条注册（详情页卡片 + 新会话行座位）。
+新增 `tests/test_038.mjs`（28 项）盯住这次的结构契约：插槽注册带 `id`、挂载优先找座位、旧路径还在、`calc(100% - 92px)` 与 `-44px` 只允许出现在 dom 模式作用域里、own 标记必须是字面量 `own`。`tests/test_023.mjs` 的两条"只注册一个组件"断言随之改成两条注册（详情页卡片 + 新会话行座位）。
 
 ### 商店截图换成实拍 / Storefront screenshots are now real captures
 
