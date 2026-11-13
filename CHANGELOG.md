@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
@@ -8,9 +8,32 @@
 
 ---
 
-## 未发布 / Unreleased
+## 0.6.0 — 临时按钮改挂宿主官方插槽（2026-11-13）
 
-### 市场截图换成实拍 / Storefront screenshots are now real captures
+**只动客户端（`lib/client.js`），不需要从托盘退出 DSH**：装完后新开一个侧栏或刷新窗口就生效。Client-only; no tray restart needed.
+
+> 起因：DSH `0.2.2-rc.3` 给「新会话」这一行开了官方扩展位。我们原来那套「压窄新会话 → 用负边距把临时按钮拉回上一行」的做法，是按 rc.2 之前的宿主结构写的，继续留着就是每次宿主改 DOM 都要跟着修一次。0.6.0 把它换成官方插槽，同时修掉一个有失效的配置项。
+
+### 宿主这次给的是什么 / What the host now offers
+
+rc.3 的侧栏包声明了 `sidebar.session.action`，类型是 `hoc`：占用者能拿到宿主自己的「新会话」按钮（`children`）和 `{ wide }`（`false` = 56px 折叠轨道），可以包一层、并在旁边加自己的控件。同一版里「新会话」按钮外面多包了一层 `div.newSessionRow`（`display:flex; gap:6px`），按钮从 `flex:none` 改成 `flex:1 1 auto`。
+
+We now register an occupant for that slot and mount the Temp button into the empty seat it renders, instead of shrinking the host button and pulling our sibling back with a negative margin.
+
+### 改动 / Changes
+
+1. **临时按钮改挂官方插槽**：注册 `sidebar.session.action` 占用者（`id: 'temp-session'`），返回「宿主按钮原样 + 一个空座位」，再把按钮挂进座位。宿主行自己的 flex、`gap`、折叠淡入动画、宽/窄切换全部接管，我们不再改宿主的宽度和边距。
+2. **删掉两处脆弱 hack**：`width:calc(100% - 92px)`（压窄「新会话」）和 `margin:-44px`（把临时按钮拉回上一行）只在旧路径保留。
+3. **旧宿主自动回退**：DSH < `0.2.2-rc.3` 没声明这个插槽，注册会抛错（已捕获），自动退回原来的「兄弟节点 + 负边距」路径，由 `html[data-dsbs-temp-mode="dom"]` 这批规则承担。**同一时刻只会存在一个临时按钮**，来回切也拆得干净。
+4. **修复 `TEMP_BUTTON_STYLE=own` 从未生效**：宿主一直在下发 `buttonStyle: 'own'`，客户端却把标记写成布尔 `"true"`，而所有样式规则等的是 `[data-dsbs-temp-style="own"]`——两者永远对不上，所以这个"单独一行"的选项从 0.2.8 加进来起就是死的。现在标记写成 `own` 本身，并且改成让宿主行 `flex-wrap:wrap`、座位占满第二行，这才是 rc.3 结构下真正的一行。
+5. **折叠判断改用宿主的 `wide`**：原来靠量宽度（`< 170px`）猜是不是折叠轨道，现在优先用插槽给的 `wide === false`，量宽度只作为旧宿主/首帧的兜底。
+6. **隐藏开关也走 `<html>` 标记**：座位元素归 React 管，直接写在它身上的 `hidden` 可能在重渲染时被抹掉，所以 `SHOW_TEMP_BUTTON=off` 另外发一个 `data-dsbs-temp-off` 标记，样式以它为准。
+
+### 回归 / Tests
+
+新增 `tests/test_038.mjs`（18 项）盯住这次的结构契约：插槽注册带 `id`、挂载优先找座位、旧路径还在、`calc(100% - 92px)` 与 `-44px` 只允许出现在 dom 模式作用域里、own 标记必须是字面量 `own`。`tests/test_023.mjs` 的两条"只注册一个组件"断言随之改成两条注册（详情页卡片 + 新会话行座位）。
+
+### 商店截图换成实拍 / Storefront screenshots are now real captures
 
 `screenshots.json` 原本指向 `assets/screenshots/screenshot-1~3.png`，那三张是 `0.2.5` 时期的示意图，**里面画的还是 `0.5.0` 已经删掉的「折叠」布局**，跟插件现在的样子对不上。现在改为指向 `assets/real-screenshots/` 下三张真实运行截图：浮层布局、标签页布局、控制栏特写（会话标题与账号名已打码）。
 

@@ -166,9 +166,10 @@ function buildClient(fetchImpl) {
 
   const mod = sandbox.__entry.factory(() => ReactStub)
   const registered = []
+  const specNames = []
   const slots = {
     inject(spec, cb) { if (typeof cb === 'function') cb() },
-    register(spec, component) { registered.push(component); return () => {} },
+    register(spec, component) { registered.push(component); specNames.push(spec && spec.name); return () => {} },
   }
   const ctx = {
     locale: { getSnapshot: () => ({ active: 'zh-CN' }) },
@@ -181,6 +182,7 @@ function buildClient(fetchImpl) {
   return {
     requests,
     registered,
+    specNames,
     setComponent(component) { Component = component },
     render,
     opened,
@@ -218,7 +220,14 @@ const live = buildClient(async (url, init) => {
   return new Response('not found', { status: 404 })
 })
 
-check('client: detail-page component registered', live.registered.length === 1, String(live.registered.length))
+// 0.6.0: two contributions — the detail-page card, then the New-session seat.
+check(
+  'client: detail-page component registered',
+  live.registered.length === 2
+    && live.specNames[0] === 'plugins.bundle.config'
+    && live.specNames[1] === 'sidebar.session.action',
+  live.specNames.join(',')
+)
 const Component = live.registered[0]
 check('client: registered a component function', typeof Component === 'function')
 live.setComponent(Component)
@@ -270,7 +279,7 @@ check('policy: saved hint appears', textOf(tree).includes('已保存'), textOf(t
 
 // ---- scenario 2: the host half is not answering -------------------------
 const dead = buildClient(async () => new Response('not found', { status: 404 }))
-check('policy/dead: component still registered', dead.registered.length === 1, String(dead.registered.length))
+check('policy/dead: component still registered', dead.registered.length === 2, String(dead.registered.length))
 dead.setComponent(dead.registered[0])
 tree = dead.render()
 await new Promise((r) => setTimeout(r, 80))
