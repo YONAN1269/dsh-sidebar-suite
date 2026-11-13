@@ -27,6 +27,7 @@
   ],
   "type": "module",
   "scripts": {
+    "smoke": "node scripts/smoke-l5.mjs",
     "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs && node tests/test_028.mjs && node tests/test_029.mjs && node tests/test_030.mjs && node tests/test_031.mjs && node tests/test_032.mjs && node tests/test_033.mjs && node tests/test_034.mjs && node tests/test_035.mjs && node tests/test_036.mjs && node tests/test_037.mjs",
     "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/temp-session-host.mjs && npm pack --dry-run"
   },
