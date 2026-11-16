@@ -2,15 +2,15 @@ name: Release
 
 # npm trusted publishing (OIDC) — no NPM_TOKEN in repo secrets.
 # See RELEASING.md for the one-time npmjs.com setup and the cutover checklist.
-# This workflow is deliberately INACTIVE until the trusted publisher is
-# registered on npmjs.com; pushing a v* tag before then will fail at publish.
+# Trusted publisher is registered on npmjs.com (YONAN1269/dsh-sidebar-suite,
+# release.yml, npm publish allowed). Pushing a v* tag triggers an OIDC publish.
 on:
   push:
     tags:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write # required by softprops/action-gh-release to create the Release
   id-token: write # mints the short-lived OIDC token npm exchanges for a publish
 
 jobs:
@@ -42,6 +42,11 @@ jobs:
           node --check lib/client.js
           node --check lib/temp-session-host.mjs
           npm pack --dry-run
+
+      # Produce the real tgz so the Release step below has an asset to attach.
+      # (npm pack --dry-run above only checks the file list; it writes nothing.)
+      - name: Pack release tarball
+        run: npm pack --silent
 
       # No NODE_AUTH_TOKEN / NPM_TOKEN on purpose. With id-token: write set and
       # no token in env, npm falls through to the OIDC trusted-publisher exchange.

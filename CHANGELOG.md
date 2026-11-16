@@ -1,10 +1,21 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
+
+---
+
+## 0.7.1 — 启用 npm trusted publishing（2026-11-17）
+
+纯发布工程版本，插件功能与 0.7.0 完全一致。目的：用一次真实发布验证 OIDC trusted publishing 链路，为 bypass-2FA token 在 2027-01 停用做准备。
+
+- 在 npmjs.com 为 `dsh-sidebar-suite` 配置 GitHub Actions trusted publisher（`YONAN1269/dsh-sidebar-suite` / `release.yml`，允许 `npm publish`），账号开启 2FA。
+- 修正 `.github/workflows/release.yml`：`contents: write`（gh-release 建 Release 需要）、发布前真正 `npm pack` 生成 tgz 附件、更新已启用注释。
+- 修正 `RELEASING.md`：验证发布前必须先 bump 三处版本号，避免"版本已存在"403。
+- 本次由 GitHub Actions 用 OIDC 免 token 发布，成功后包页应出现 provenance 徽章。
 
 ---
 

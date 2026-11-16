@@ -46,12 +46,24 @@ git push --follow-tags                :: 推代码和新 tag
 
 ### 第 3 步：用一次 tag 发布验证（2 天内）
 
+⚠️ **必须先 bump 版本号**：`release.yml` 里的 `npm publish` 用的是 `package.json` 的 version。如果还是刚发过的 `0.7.0`，会因「版本已存在」403 失败。三处版本要一起改（test_030 会校验 package.json 与 client.js 一致）：
+
+1. `package.json` → `"version": "0.7.1"`
+2. `lib/client.js` → `var VERSION = '0.7.1'`
+3. `CHANGELOG.md` → 顶部版本列表加 `0.7.1`，并新增一节
+
+然后提交、打 tag、推送（tag 名必须与新版本号对应）：
+
 ```bash
-git tag v0.7.1   # 用一个新版本号；用刚发过的版本会因 403 失败
-git push origin v0.7.1
+npm test                       # 全绿才能发
+git add -A && git commit -m "Release 0.7.1: validate trusted publishing"
+git tag -a v0.7.1 -m "Release 0.7.1"
+git push origin main --follow-tags
 ```
 
 到 GitHub 仓库 **Actions** 页看 Release 工作流。成功标志：npm 包页面出现 **provenance** 徽章，且 `npm audit signatures` 能验证。
+
+> 发布工作流已修好两个必修点：`permissions.contents: write`（gh-release 建 Release 需要）、真正生成 tgz 附件（`npm pack`，dry-run 不落盘）。
 
 ### 第 4 步：确认后锁门
 
