@@ -385,13 +385,13 @@ check('client: teardown removes the toast', doc.querySelector('[data-dsbs-temp-t
 // Its adapter walks the brand chain and refuses the sidebar when the root holds
 // anything but ONE direct <button>. Run its real shipped code on the DOM our
 // client just produced.
-// Optional host plugin: present on the author's machine, absent in CI.
-// Set DSH_CHAT_CLIENT to run the compatibility checks against another install.
-const CHAT_CLIENT = process.env.DSH_CHAT_CLIENT || path.join(
-  process.env.USERPROFILE || process.env.HOME || '',
-  '.dsh', 'profiles', 'desktop', 'node_modules', 'dsh-deepseek-chat', 'lib', 'client.js'
-)
-if (fs.existsSync(CHAT_CLIENT)) {
+// Optional host plugin: an "offline" suite must never read a real machine.
+// 0.7.0 (P3): these checks are now OPT-IN via DSH_CHAT_CLIENT. Auto-probing the
+// author's install made a read EPERM (antivirus / ACL) crash the whole suite on
+// a locked-down box while CI merely SKIPped it. Point the variable at a client
+// to run the compatibility checks; otherwise they are skipped everywhere.
+const CHAT_CLIENT = process.env.DSH_CHAT_CLIENT || ''
+if (CHAT_CLIENT && fs.existsSync(CHAT_CLIENT)) {
   const chatSrc = fs.readFileSync(CHAT_CLIENT, 'utf8')
   const from = chatSrc.indexOf('function attachSidebarAdapter(')
   let depth = 0
@@ -416,7 +416,7 @@ if (fs.existsSync(CHAT_CLIENT)) {
   )
   if (adapter) adapter.dispose()
 } else {
-  console.log('SKIP compat checks: dsh-deepseek-chat is not installed')
+  console.log('SKIP compat checks: set DSH_CHAT_CLIENT to a dsh-deepseek-chat client.js to run them')
 }
 
 fs.rmSync(HOME, { recursive: true, force: true })

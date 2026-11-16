@@ -376,7 +376,9 @@ async function main() {
     check('removeOne refuses ids that are not temporary',
       /function removeOne\(sessionId\)[\s\S]{0,600}?if \(!state\.tracked\.includes\(id\)\) return \{ ok: false/.test(host))
     check('removeOne keeps a failed id tracked so the next launch retries',
-      /if \(gone \|\| hidden\)[\s\S]{0,400}?report\.failed\.push\(id\)/.test(host))
+      /if \(gone\) \{[\s\S]{0,200}?state\.tracked = state\.tracked\.filter/.test(host) &&
+      /report\.failed\.push\(id\)/.test(host) &&
+      /hidden,\n    retried: true/.test(host))
     check('keeping a session is the existing untrack route, not a new one',
       /dsh-temp-session\.untrack[\s\S]{0,400}?untrack\(sessionId\)/.test(host))
     check('the config file documents the new switch',

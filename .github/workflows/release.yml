@@ -1,0 +1,56 @@
+name: Release
+
+# npm trusted publishing (OIDC) — no NPM_TOKEN in repo secrets.
+# See RELEASING.md for the one-time npmjs.com setup and the cutover checklist.
+# This workflow is deliberately INACTIVE until the trusted publisher is
+# registered on npmjs.com; pushing a v* tag before then will fail at publish.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # mints the short-lived OIDC token npm exchanges for a publish
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Trusted publishing needs npm >= 11.5.1. Node 22 ships npm 10, so pin it
+      # explicitly; do NOT rely on the setup-node default.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - name: Verify toolchain
+        run: node --version && npm --version
+
+      # Same gate as ci.yml: no publish if the offline regression is red.
+      - name: Run offline regression
+        run: npm test
+
+      - name: Syntax + tarball sanity
+        run: |
+          node --check lib/index.js
+          node --check lib/client.js
+          node --check lib/temp-session-host.mjs
+          npm pack --dry-run
+
+      # No NODE_AUTH_TOKEN / NPM_TOKEN on purpose. With id-token: write set and
+      # no token in env, npm falls through to the OIDC trusted-publisher exchange.
+      - name: Publish to npm with provenance
+        run: npm publish --access public
+
+      - name: Create GitHub Release from the tag
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dsh-sidebar-suite-*.tgz

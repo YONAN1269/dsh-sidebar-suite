@@ -1,12 +1,42 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
+
+## 0.7.0 — 可靠性版本：补上「临时会话必删」承诺的三个漏洞（2026-11-16）
+
+> 这是 0.6.1 代码审阅后的**契约版本**。核心能力面不变，重点是让「临时 = 退出即删」这句承诺在所有失败路径上都成立，并把变更接口收紧。同时准备好 npm trusted publishing 的迁移（凭据配置需作者本人完成，见 `RELEASING.md`）。**这次动的是宿主端 `lib/temp-session-host.mjs`，装完要从托盘彻底退出 DSH 再开一次才生效**（客户端只改了 `VERSION` 常量，无功能变化）。
+
+### P1 — 单条删除遇到「文件被锁 + 已归档」不再永久残留
+
+- `removeOne()` 原先把 `hidden`（只归档了行）也当成删除成功、把 id 移出 `temp-sessions.json`。结果右键「立即删除」遇到锁文件时，行从侧栏消失，但磁盘上的会话内容永远不再被清理 —— 直接违背「临时会话退出即删」。
+- 现在只有 `gone`（目录真的删掉、确认为空）才移出跟踪；`hidden && !gone` 保留 id、计入 `failed`，下次启动继续重试，与 `purgeAll()` 一致。返回值新增 `retried: true`，客户端仍显示「文件被占用，下次启动再删」。`removeOne` 的隔离测试见 `tests/test_040.mjs`。
+
+### P2 — 溢出裁剪与变更路由
+
+- **MAX_KEPT 裁剪**（原来 `splice` 掉最旧的就删，无保护）：现在只把**最旧的 overflow 个**当候选，正在使用（`ACTIVE_WINDOW_MS`，与定时清理一致）的会话跳过、删除失败的保留 id 供下次重试；绝不会因为跳过旧会话而转去删更新的、仍被需要的会话。
+- **变更类路由收成 POST-only**：`track` / `untrack` / `remove` / `purge` 不再接受 GET（原来 `['POST','GET']`），避免被图片标签、预取等 GET 触发删除。`status` / `list` / `config` / `probe` 的 GET 保留。
+
+### P3 — 诊断与测试隔离
+
+- `safeSessionDir()` 的 `realpath` / `lstat` 守卫在被 ACL、杀软或 OneDrive 占位目录挡住时，不再静默返回空串，而是把带错误码的原因写进 `lastError`（`ENOENT` 属正常 miss，不记）——失败报告现在能说明原因。
+- `tests/test_020.mjs` 的 dsh-deepseek-chat 兼容检查改为**显式 opt-in**（设 `DSH_CHAT_CLIENT`），离线回归不再读取真实机器上的安装，避免受限环境下 `EPERM` 直接崩掉整套测试。
+- 提交 0.6.x 遗留的 `lib/client.js:3257` 配置页长路径换行修复（`overflowWrap: 'anywhere'`）。
+
+### 文档与发布工程
+
+- `DETAIL.md` 新增「宿主兼容与契约表」：集中记录插件依赖的 DSH DOM/插槽约定、各自对应的 rc.2/rc.3 版本、以及改版时要搜的关键词 —— 宿主假设的唯一集中记录（取代原计划的运行时适配层拆分：那些字面量多在 CSS 字符串里、解析逻辑连贯，拆开风险大于收益）。
+- README / 使用说明 的配置表标注包内 `temp-session-config.txt` 为唯一权威源；修正使用说明里过时的「v0.5.0 / DSH rc.2 当前最新」。
+- 新增 `.github/workflows/release.yml`（npm trusted publishing / OIDC，**在 npmjs.com 注册 trusted publisher 前不生效**）与 `RELEASING.md`（网页配置步骤 + 切换清单）。bypass-2FA token 2027 年 1 月停用，迁移步骤已备好。
+
+### 回归 / Tests
+
+- 新增 `tests/test_040.mjs`（23 项）：POST-only 路由、P1 隐藏删除保留跟踪、溢出裁剪的活跃保护与失败保留、路径守卫错误可见、test_020 opt-in。全套 18 个测试文件（约 700+ 断言）绿灯。
 
 ## 0.6.1 — 采纳社区收录评审的两条建议（2026-11-13）
 

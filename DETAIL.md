@@ -205,3 +205,29 @@ Plain English: right-clicking a temporary row opens a two-item menu. "Keep" simp
 **侧栏顶部按钮的 DOM 约束（0.2.1）**：`dsh-deepseek-chat` 的侧栏适配器（`lib/client.js` 里的 `attachSidebarAdapter`）会从 `sidebar.brand.name` 插槽往上走五层，然后要求侧栏根节点下 `<button>` 子元素**恰好 1 个**（`controls()` 里的 `buttons.length === 1 && buttons[0] === row.nextElementSibling`）。0.2.0 把「临时」按钮作为根节点的第 2 个 `<button>` 插进去，适配器直接 `return null`，于是它在切换器下渲染「当前侧栏不兼容：顶部新会话仍使用 HARNESS」并且不再接管「新会话」。0.2.1 把按钮装进 `[data-dsbs-temp-slot]`（`<div>`），根节点的 `<button>` 计数回到 1，适配器恢复。回归测试见 `_probe/chat-compat.mjs`：它从插件 bundle 里抽出真实的 `attachSidebarAdapter` 跑一遍假 DOM。
 
 Plain English: the Temp button now creates a real DSH session (sidebar entry, native conversation window, real tools and model) and deletes it on quit — synchronously from `process.on('exit')`, plus a sweep on the next launch for anything a hard kill left behind. DSH has no public session-delete API, so the plugin removes the session directory itself and the search index reconciles on its own.
+
+---
+
+## 宿主兼容与契约表 / Host compatibility & contracts（0.7.0）
+
+> **维护者须知 / For maintainers**：本插件靠嗅探 DSH 侧栏的类名后缀和插槽来定位节点，不硬编码 CSS-module 哈希。DSH 每次改侧栏结构，按这张表逐项核对即可 —— 这是宿主假设的**唯一集中记录**，源码里的对应点都带 `rc.2` / `rc.3` 注释。改版时先搜这里的关键词。
+
+| 依赖的宿主约定 / Contract | 用在源码哪里 / Where | 对应 DSH 版本 | 改版时怎么找 / On host change |
+| --- | --- | --- | --- |
+| `[data-slot="sidebar.workspaces"]` | `client.js` `resolveSidebar()` 定位工作区组 | rc.1+ 稳定 | 搜 `data-slot` |
+| `div.wtg9ga_scrollArea`（正则 `/scrollArea/`） | `resolveSidebar()` 定位侧栏滚动容器 | rc.2 起是 CSS Grid（4 行） | 搜 `scrollArea` |
+| `div.wtg9ga_scrollRegion`（正则 `/scrollRegion/`） | 控制栏/页签条的挂载宿主（flex 列，React 不重建） | rc.2+ | 搜 `scrollRegion` |
+| `nav.wtg9ga_panelList`（正则 `/panelList/`） | 识别「扩展」面板组 | rc.1+ 稳定 | 搜 `panelList` |
+| `button[data-row-key^="overflow:"]` | `expandAllSessions()` 折叠分组的展开按钮 | rc.1+ 稳定 | 搜 `overflow:` |
+| `[data-row-key^="session:"]` | 标记临时会话行、右键菜单定位 | 稳定 | 搜 `data-row-key` |
+| `sidebar.session.action` 插槽（hoc，`{ wide }`） | 临时按钮挂进「新会话」行的座位 | **rc.3 新增**；旧宿主自动回退到负边距路径 | 搜 `sidebar.session.action` |
+| `[data-dsh-chat-content],[data-dsh-chat-layout]` | `chatModeActive()` 探测 dsh-deepseek-chat 的 CHAT 模式 | 第三方插件 | 搜 `dsh-chat-content` |
+
+**已适配的宿主改动史 / History of host DOM changes**
+
+- **rc.2（2026-11-12）**：侧栏根从 flex 列改成 CSS Grid，宿主面板被显式钉在特定行；`0.4.1` 把控制栏/页签条从 grid 移到父级 `scrollRegion`。
+- **rc.3（2026-11-13）**：「新会话」行新增 `sidebar.session.action` 官方插槽；`0.6.0` 把临时按钮从负边距 hack 改挂该插槽，同时保留旧宿主回退。
+
+**约定原则 / Rules**：只匹配语义后缀（`/scrollArea/`、`/panelList/`），绝不匹配构建生成的哈希前缀；宿主改版优先走官方插槽/服务，其次才用 DOM 嗅探；嗅探逻辑集中在 `resolveSidebar()` 一处。
+
+回归：`tests/test_034.mjs` 把 rc.2 的 DOM 契约固化；`tests/test_035.mjs` 盯住 `scrollArea`/`scrollRegion` 解析；`tests/test_038.mjs` 盯住 rc.3 插槽；跑 `npm test` 全绿即视为契约未被破坏。

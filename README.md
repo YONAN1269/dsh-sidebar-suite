@@ -281,6 +281,8 @@ DSH **没有公开的「删除会话」接口**（我核对过 `app.asar`：`ses
 
 ### 配置（记事本可改）
 
+> 下面的键/默认值与插件包内 `temp-session-config.txt`（出厂模板）保持一致；模板是唯一权威源，改动配置键时请先改它并跑 `npm test`。
+
 **文件位置（0.6.1 起）**：`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`，Windows 上是 `C:\Users\12691\.dsh\dsh-sidebar-suite\temp-session-config.txt`。只改等号右边，保存后**约 3 秒自动生效，不用重启**；详情页的开关写的是同一个文件。插件包内的同名文件只是首次启动复制过去用的出厂模板，**不要改它**。
 
 | 键 | 默认 | 作用 |
