@@ -15,6 +15,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').r
 const CLIENT = ROOT + '/lib/client.js'
 const pkg = JSON.parse(readFileSync(ROOT + '/package.json', 'utf8'))
 const client = readFileSync(CLIENT, 'utf8')
+const index = readFileSync(ROOT + '/lib/index.js', 'utf8')
 const readme = readFileSync(ROOT + '/README.md', 'utf8')
 const detail = readFileSync(ROOT + '/DETAIL.md', 'utf8')
 const guide = readFileSync(ROOT + '/使用说明.md', 'utf8')
@@ -35,7 +36,7 @@ check('bar: every mode button goes into the pill',
 check('bar: the pill is appended before the divider',
   /bar\.appendChild\(seg\)[\s\S]{0,200}?bar\.appendChild\(separator\)/.test(client))
 check('bar: divider still tracks the visible action buttons',
-  client.includes('runtime.parts = { separator: separator, context: [tabSwap, pop] }'))
+  client.includes('runtime.parts = { separator: separator, seg: seg, context: [tabSwap, pop, quick] }'))
 
 // ---- icons ---------------------------------------------------------------
 const GLYPHS = ['b', 'c', 'n', 'swap', 'pop', 'quick']
@@ -61,6 +62,27 @@ check('icon: glyphs are masks, not <svg> children', // relabel() rewrites textCo
   !client.includes('createElementNS(') && client.includes('mask-image:var(--dsbs-icon)'))
 check('icon: SVG payloads carry no raw single quote', // it would break the JS string literal
   !/--dsbs-icon:url\("[^)]*'/.test(client))
+
+// ---- 0.7.3: legible in a narrow column, honest when unusable ------------
+// The Cycle glyph was a pair of curved arrows that read as the same thing as
+// the straight swap arrows once the column shows icons only. It is now a
+// four-quadrant layout mark.
+check('0.7.3: Cycle carries a layout glyph, not a second pair of arrows',
+  /\[data-dsbs-glyph="quick"\]\{--dsbs-icon:url\("[^"]*%3Crect/.test(client) &&
+  !client.includes('M13.4 7A5.5 5.5'))
+// Code defaulted to true since 0.1.3 while the docs said "off by default".
+check('0.7.3: Cycle is off by default, and schema agrees with the client',
+  /var DEFAULTS = \{ mode: 'b', showQuickSwitch: false, tab: 'ext' \}/.test(client) &&
+  /showQuickSwitch: false/.test(index))
+check('0.7.3: the docs and the code tell the same story about Cycle',
+  /默认不出现/.test(readme) && /默认不出现/.test(detail) && /showQuickSwitch: false/.test(client))
+// A consumer tab owns the column, so the layout controls cannot act on it.
+check('0.7.3: a consumer tab hides the layout controls, leaving no dead buttons',
+  /if \(pluginTab\) \{\s*if \(parts\.seg\) parts\.seg\.setAttribute\('hidden', ''\)/.test(client))
+check('0.7.3: the tab strip names the provider (tabs.own finally rendered)',
+  client.includes("String(t('tabs.own')).replace('{name}', tabOwner)"))
+check('0.7.3: the schedule-time field is really disabled when its switch is off',
+  /disabled: policy\.scheduleDelete !== true/.test(client))
 
 // ---- geometry the 0.2.8 toolbar got wrong --------------------------------
 const baseButton = (client.split('[data-dsbs-bar] button[data-dsbs-glyph]{')[1] || '').split('}')[0]

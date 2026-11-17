@@ -146,8 +146,11 @@ async function main() {
     /extHidden = false\s+wsHidden = false/.test(client))
   check('0.5.0: mode buttons use their own id as glyph',
     client.includes("modeButton.setAttribute('data-dsbs-glyph', mode)"))
-  check('0.5.0: only two context actions remain',
-    client.includes('context: [tabSwap, pop]'))
+  // 0.7.3: Cycle joined the action set so a visible Cycle button keeps the
+  // divider alive; the point of this check is that no fold button survived.
+  check('0.5.0: no fold button survives in the context action set',
+    client.includes('context: [tabSwap, pop, quick]') &&
+    !/context: \[[^\]]*fold/.test(client))
   check('0.5.0: an empty action set hides the divider',
     /if \(visibleContext > 0\) parts\.separator\.removeAttribute\('hidden'\)[\s\S]{0,120}else parts\.separator\.setAttribute\('hidden', ''\)/.test(client))
   check('0.5.0: getLayout documents the new value set',

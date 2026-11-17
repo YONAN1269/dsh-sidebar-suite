@@ -76,11 +76,11 @@ The point-by-point list of both design goals is in the "What this plugin is" sec
 # ~/.dsh/profiles/desktop/cordis.patch.yml
 - id: dsh-sidebar-suite
   config:
-    mode: b            # a = fold, b = tabs, c = overlay
-    showQuickSwitch: false
+    mode: b              # b = tabs, c = overlay, n = official default
+    showQuickSwitch: false   # default; set true to add the Cycle button
 ```
 
-在**插件详情页顶部的图形化设置**里改 `mode` 会通过官方 `configForms` 控制器写入，立刻成为新的启动默认，无需改文件、无需重启。其它字段（`tab`、`foldExt`、`foldWs`、`showQuickSwitch`）仍按控制栏的操作正常持久化。
+在**插件详情页顶部的图形化设置**里改 `mode` 会通过官方 `configForms` 控制器写入，立刻成为新的启动默认，无需改文件、无需重启。其它字段（`tab`、`showQuickSwitch`）仍按控制栏的操作正常持久化。
 Changing `mode` in the **graphical settings card pinned at the top of the plugin page** writes through the host `configForms` controller, so it becomes the startup default immediately — no file editing, no restart. The other fields still persist from the bar.
 
 ## 图形化设置页 / Graphical settings page
