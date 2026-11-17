@@ -43,6 +43,16 @@ jobs:
           node --check lib/temp-session-host.mjs
           npm pack --dry-run
 
+      # A mistyped tag (v0.7.3 with package.json still 0.7.2) would publish the
+      # wrong version and create a mismatched Release. Fail fast before publish.
+      - name: Verify tag matches package version
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "v${PKG_VERSION}" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json version ${PKG_VERSION}" >&2
+            exit 1
+          fi
+
       # Produce the real tgz so the Release step below has an asset to attach.
       # (npm pack --dry-run above only checks the file list; it writes nothing.)
       - name: Pack release tarball

@@ -18,6 +18,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').r
 const CLIENT = ROOT + '/lib/client.js'
 const client = fs.readFileSync(CLIENT, 'utf8')
 const pkg = JSON.parse(fs.readFileSync(ROOT + '/package.json', 'utf8'))
+const changelog = fs.readFileSync(ROOT + '/CHANGELOG.md', 'utf8')
 
 let pass = 0
 let fail = 0
@@ -136,6 +137,11 @@ function threw(fn) {
 check('package: version is 0.3.0 or later', /^0\.(3|[4-9])\./.test(pkg.version), pkg.version)
 const embedded = (client.match(/var VERSION = '([^']+)'/) || [])[1]
 check('package: the version the service reports matches package.json', embedded === pkg.version, embedded + ' vs ' + pkg.version)
+// 0.7.3: bumping package.json + client.js but forgetting CHANGELOG used to pass
+// CI and ship with no release notes. Require a section for the current version.
+check('docs: CHANGELOG has a section for the current version',
+  changelog.split('\n').some((line) => new RegExp('^##\\s+' + pkg.version.replace(/\./g, '\\.') + '(\\s|$)').test(line)),
+  pkg.version)
 
 // ---- the service exists at all ------------------------------------------
 const live = buildClient()
@@ -228,7 +234,7 @@ check('subscribe: the returned disposer stops delivery', seen.length === before)
 // ---- unregister + lifecycle ---------------------------------------------
 const disposeFourth = api.registerTab({ id: 'gone', title: 'Gone', mount() {} })
 api.activateTab('gone')
-check('unregister: a removed tab is no longer listed', api.getTabs().some((t) => t.id === 'gone'))
+check('unregister: the tab is listed before removal', api.getTabs().some((t) => t.id === 'gone'))
 api.unregisterTab('gone')
 check('unregister: the id disappears', !api.getTabs().some((t) => t.id === 'gone'))
 check('unregister: an open tab falls back to the groups', api.getActiveTab() === null)
@@ -299,7 +305,6 @@ check('teardown: the html flag is cleared with the rest',
 const readme = fs.readFileSync(ROOT + '/README.md', 'utf8')
 const detail = fs.readFileSync(ROOT + '/DETAIL.md', 'utf8')
 const guide = fs.readFileSync(ROOT + '/使用说明.md', 'utf8')
-const changelog = fs.readFileSync(ROOT + '/CHANGELOG.md', 'utf8')
 
 check('docs: README documents registerTab', /registerTab/.test(readme))
 check('docs: DETAIL explains the service contract', /registerTab/.test(detail))

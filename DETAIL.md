@@ -128,8 +128,8 @@ export function apply(ctx) {
 dsh plugin --profile desktop add dsh-sidebar-suite
 ```
 
-本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.2（desktop profile）** 真机验证；`0.2.2-rc.1` 同样兼容但已过时。
-For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.2 (desktop profile)**; 0.2.2-rc.1 still works but is superseded.
+本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.3（desktop profile）** 真机验证；`rc.1` / `rc.2` 同样兼容但已过时。逐项 DOM 对照见本文末尾「宿主兼容与契约表」。
+For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.3 (desktop profile)**; rc.1 / rc.2 still work but are superseded. See the host compatibility table at the end of this document for the per-version DOM diff.
 
 **升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
