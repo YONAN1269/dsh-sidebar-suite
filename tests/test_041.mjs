@@ -109,9 +109,13 @@ try {
   check('write-fail: reason is surfaced to the caller',
     !!(failedUntrack && typeof failedUntrack.error === 'string' && failedUntrack.error.length > 0),
     JSON.stringify(failedUntrack))
-  // saveStore now returns a boolean and callers check it.
-  check('write-fail: source records saveStore success as a boolean',
-    /await writeFile\([\s\S]{0,120}?return true[\s\S]{0,120}?return false/.test(HOST_SRC))
+  // saveStore now returns a boolean and callers check it. The write path grew
+  // (per-write temp name, corrupt-file backup, rename fallback), so assert the
+  // contract rather than the exact shape: a function that returns true on
+  // success and false out of its catch.
+  const saveStoreSrc = (HOST_SRC.split('async function saveStore()')[1] || '').split('\n}\n')[0]
+  check('write-fail: saveStore returns a boolean on both paths',
+    /return true/.test(saveStoreSrc) && /return false/.test(saveStoreSrc))
   // Restore the data dir so the finally cleanup and later sections work.
   fs.rmSync(DATA_DIR, { force: true })
   fs.mkdirSync(DATA_DIR, { recursive: true })

@@ -86,15 +86,42 @@ try {
   // ---- #1c: a corrupt store is reported, not silently treated as empty --
   check('source: loadStore keeps tracked on a non-ENOENT read error',
     /store read failed:[\s\S]{0,300}?state\.storeReadError[\s\S]{0,80}?return/.test(HOST_SRC))
-  check('source: saveStore uses a .tmp sibling + rename',
-    /const tmp = path \+ '\.tmp'[\s\S]{0,200}?await rename\(tmp, path\)/.test(HOST_SRC))
+  check('source: saveStore writes a per-write temp file then renames it',
+    HOST_SRC.includes('${path}.${process.pid}.${storeWriteSeq}.tmp') &&
+    /await rename\(tmp, path\)/.test(HOST_SRC))
+  check('source: a failing write cleans up its temp file',
+    /finally \{[\s\S]{0,200}?await rm\(tmp, \{ force: true \}\)/.test(HOST_SRC))
+  check('source: an unreadable store is kept as .corrupt before overwrite',
+    HOST_SRC.includes("`${path}.corrupt`"))
+  check('source: the atomic exit write does not truncate the target',
+    /const tmp = `\$\{path\}\.\$\{process\.pid\}\.exit\.tmp`[\s\S]{0,200}?renameSync\(tmp, path\)/.test(HOST_SRC))
+  check('source: rollback trusts the file only when the read succeeded',
+    /if \(!state\.storeLoadOk\) state\.tracked = before\.slice\(\)/.test(HOST_SRC))
+  check('source: a symlinked workspace still counts as present',
+    /!ws\.isDirectory\(\) && !ws\.isSymbolicLink\(\)/.test(HOST_SRC))
+  check('source: a purge builds one index instead of scanning per id',
+    /const liveIds = indexSessionIds\(\)/.test(HOST_SRC) &&
+    /sessionGoneFromDisk\(id, liveIds\)/.test(HOST_SRC))
+  check('source: an untrustworthy index keeps the id instead of dropping it',
+    /if \(index === null\) return false/.test(HOST_SRC))
+  check('source: an unrelated config change keeps the pending retry',
+    /restartScheduler\(!scheduleMoved\)/.test(HOST_SRC))
+  check('source: an archiveSession refusal is reported honestly',
+    /return archived !== false/.test(HOST_SRC))
+  check('source: the projection cache only goes after a real delete',
+    /if \(removed > 0\) \{[\s\S]{0,140}?rm\(projectionCacheFile/.test(HOST_SRC))
+  check('source: session ids may not contain a colon (NTFS streams)',
+    /const SESSION_ID_PATTERN = \/\^\[A-Za-z0-9\._-\]\+\$\//.test(HOST_SRC))
+  check('source: a zombie is counted apart from a real delete',
+    /report\.zombies \+= 1/.test(HOST_SRC))
 
   // ---- #2: a zombie id (no directory on disk) is dropped by purgeAll ----
   const b = await boot('zombie')
   await b.host.track('session-zombie') // never create a directory for it
   check('zombie: setup tracked the id', b.host.state.tracked.includes('session-zombie'))
   const purge = await b.host.purgeAll('manual')
-  check('zombie: purge counts the missing session as removed', purge.removed >= 1, JSON.stringify(purge))
+  check('zombie: purge reports the missing session as a zombie', purge.zombies >= 1, JSON.stringify(purge))
+  check('zombie: nothing is claimed as deleted this run', purge.removed === 0, JSON.stringify(purge))
   check('zombie: id is no longer tracked', !b.host.state.tracked.includes('session-zombie'),
     JSON.stringify(b.host.state.tracked))
   check('zombie: no false failure entry', !purge.failed.includes('session-zombie'), JSON.stringify(purge.failed))

@@ -77,12 +77,39 @@ check('0.7.3: Cycle is off by default, and schema agrees with the client',
 check('0.7.3: the docs and the code tell the same story about Cycle',
   /默认不出现/.test(readme) && /默认不出现/.test(detail) && /showQuickSwitch: false/.test(client))
 // A consumer tab owns the column, so the layout controls cannot act on it.
-check('0.7.3: a consumer tab hides the layout controls, leaving no dead buttons',
-  /if \(pluginTab\) \{\s*if \(parts\.seg\) parts\.seg\.setAttribute\('hidden', ''\)/.test(client))
+check('0.7.3: a consumer tab hides the whole bar, leaving no dead buttons',
+  /if \(pluginTab\) runtime\.bar\.setAttribute\('hidden', ''\)/.test(client))
+check('0.7.3: the track-uncertain case has its own honest wording',
+  /'temp\.trackUncertain'/.test(client) && /temp\.trackUncertain/.test(client))
+check('0.7.3: an unknown track result keeps the badge (safe direction)',
+  /if \(createdId\) \{\s*if \(error && error\.trackFailed\) \{/.test(client))
 check('0.7.3: the tab strip names the provider (tabs.own finally rendered)',
   client.includes("String(t('tabs.own')).replace('{name}', tabOwner)"))
 check('0.7.3: the schedule-time field is really disabled when its switch is off',
   /disabled: policy\.scheduleDelete !== true/.test(client))
+// The bar carries `display:flex` from an author rule, which beats the UA
+// sheet's `[hidden]{display:none}`. Without an explicit rule, hiding the bar
+// is a no-op -- exactly the bug this suite cannot see through the DOM stub.
+check('0.7.3: the bar itself can actually be hidden by the hidden attribute',
+  /\[data-dsbs-bar\]\[hidden\]\{display:none!important\}/.test(client))
+check('0.7.3: a hidden tab cannot own the column (no dead end)',
+  /activeRecord && activeRecord\.hidden !== true/.test(client))
+check('0.7.3: a stuck temp creation is released by a watchdog',
+  /tempWatchdog = setTimeout\(function \(\) \{[\s\S]{0,200}?releaseTempBusy\(\)/.test(client))
+check('0.7.3: a slow session creation is re-checked before it is called failed',
+  /var late = newOnes\(\)/.test(client))
+check('0.7.3: creating a session hands the column back from a consumer tab',
+  /if \(runtime\.activeTab\) activateTab\(null\)/.test(client))
+check('0.7.3: an unresolvable sidebar clears the ptab flag before bailing',
+  /setFlag\(html, 'data-dsbs-ptab', false\)\s*return/.test(client))
+check('0.7.3: leaving the rail does not undo a newer layout choice',
+  /if \(config\.values\.mode === runtime\.railSaved\.mode\)/.test(client))
+check('0.7.3: getLayout filters activeTab like getActiveTab does',
+  /activeTab: runtime\.activeTab && findTab\(runtime\.activeTab\) \? runtime\.activeTab : null/.test(client))
+check('0.7.3: tab.close() unregisters instead of doing nothing when inactive',
+  /close: function \(\) \{\s*unregisterTab\(record\.id\)/.test(client))
+check('0.7.3: an out-of-range maxKept is put back, not silently ignored',
+  /if \(target\) target\.value = String\(policy\.maxKept\)/.test(client))
 
 // ---- geometry the 0.2.8 toolbar got wrong --------------------------------
 const baseButton = (client.split('[data-dsbs-bar] button[data-dsbs-glyph]{')[1] || '').split('}')[0]
