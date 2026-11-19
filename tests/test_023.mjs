@@ -357,6 +357,8 @@ if (copyBtn) {
   check('feedback: copy carries the last error', report.includes('EBUSY'))
   check('feedback: local absolute paths are redacted', report.includes('<path>') && !report.includes('C:\\Users'), report)
   check('feedback: copy carries the last cleanup', report.includes('last cleanup: quit'))
+  check('feedback: copy ends with the discussions destination', report.includes('https://github.com/YONAN1269/dsh-sidebar-suite/discussions'), report.slice(-220))
+  check('feedback: copy also names the issues destination', report.includes('/issues/new'), report.slice(-220))
   ftree = rich.render()
   check('feedback: copy confirmation shown', textOf(ftree).includes('已复制'), textOf(ftree).slice(-180))
 }
@@ -385,6 +387,7 @@ const marketBtn = findAll(rich.render(), (n) => n.type === 'button' && n.props &
 check('feedback: marketplace comments button rendered', !!marketBtn)
 check('feedback: marketplace channel is named', textOf(rich.render()).includes('插件市场评论区'))
 check('feedback: detail page says where the author receives it', textOf(rich.render()).includes('作者在哪收到'))
+check('feedback: where-text gives the copied report a real destination', textOf(rich.render()).includes('discussions 新建讨论'))
 check('feedback: empty-thread guidance shown', textOf(rich.render()).includes('没有匹配的讨论'))
 if (marketBtn) {
   const beforeMarket = rich.opened.length

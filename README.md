@@ -39,9 +39,9 @@ The point-by-point list of both design goals is in the "What this plugin is" sec
 | 报一个问题 / 提一个想法 | [新建 issue](https://github.com/YONAN1269/dsh-sidebar-suite/issues/new/choose)（作者默认能收到） |
 | 聊用法、问问题、看别人怎么用 | [Discussions](https://github.com/YONAN1269/dsh-sidebar-suite/discussions) |
 | **在插件市场里留言** | [本插件的市场评论区](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/discussions?discussions_q=%22plugin%3AYONAN1269%2Fdsh-sidebar-suite%22) —— `dsh-market` 给每个插件规定的反馈入口，插件卡片上的「评论」打开的就是这一条 |
-| 不想开 GitHub，或者网速不好 | **插件详情页最下面的「反馈」框**：写一句 → 点「复制反馈内容」→ 粘到任何能联系到我的地方 |
+| 不想在插件里跳浏览器 | **插件详情页最下面的「反馈」框**：写一句 → 点「复制反馈内容」→ 报告末尾自带发送地址，粘到 [Discussions](https://github.com/YONAN1269/dsh-sidebar-suite/discussions) 新建讨论或 issue 即可 |
 
-详情页的「反馈」框有三个按钮：**复制反馈内容**、**在 GitHub 提 issue**、**插件市场评论区**。报告会自动打包 **插件版本、DSH 客户端版本、系统、当前布局、临时按钮模式、临时会话数、后端路由数、最近一次清理结果、最近一次错误**，省掉「你是什么环境」这一轮往返。
+详情页的「反馈」框有三个按钮：**复制反馈内容**、**在 GitHub 提 issue**、**插件市场评论区**。报告会自动打包 **插件版本、DSH 客户端版本、系统、当前布局、临时按钮模式、临时会话数、后端路由数、最近一次清理结果、最近一次错误**，省掉「你是什么环境」这一轮往返。**0.7.5 起报告末尾还会附上 Discussions 和 issue 的直达地址**——复制出来的文本不再「不知道发给谁」。
 
 > DSH 宿主本身**没有**给第三方插件规定反馈字段（核对过 `app.asar` 的插件管理详情页：不读取 `bugs`、也没有反馈按钮）；`package.json` 里的 `bugs.url` 是 npm 的标准字段，只给工具/网页用。真正由「插件市场」规定的是 `dsh-market` 的评论区，所以本插件把它接进了详情页，而不是再自造一个入口。
 
@@ -51,7 +51,7 @@ The point-by-point list of both design goals is in the "What this plugin is" sec
 | --- | --- | --- |
 | 在 GitHub 提 issue | `YONAN1269/dsh-sidebar-suite` → [Issues](https://github.com/YONAN1269/dsh-sidebar-suite/issues) | GitHub 官方说明「By default, you also automatically watch all repositories that you create and are owned by your personal account」，仓库所有者默认会收到通知。确认入口：仓库页右上角 `Watch` → `All Activity`（或 `Custom` 勾上 `Issues`）；统一看 [github.com/notifications](https://github.com/notifications) |
 | 插件市场评论区 | `awesome-dsh-plugin/awesome-dsh-plugin` → Discussions，标题带 `plugin:YONAN1269/dsh-sidebar-suite` | **不在本仓库**，作者需要 watch 那个仓库或那条讨论才会收到通知。giscus 官方：「If a matching discussion cannot be found, the giscus bot will automatically create a discussion the first time someone leaves a comment or reaction.」 |
-| 复制反馈内容 | 只进剪贴板 | **不会自动发送**，用户粘到微信 / QQ / 邮件才算送达 |
+| 复制反馈内容 | 只进剪贴板；0.7.5 起报告末尾附 [Discussions](https://github.com/YONAN1269/dsh-sidebar-suite/discussions) 与 issue 地址 | **不会自动发送**，但报告自带明确落点：粘到 Discussions 新建讨论或粘进 issue 即送达 |
 
 **第一次还没有讨论时**：上面那条市场评论区的搜索页会显示「There are no matching discussions.」。这是正常的 —— 回 DSH 的插件市场，找到 `dsh-sidebar-suite` 卡片点「评论」，giscus 会在第一条留言时自动建帖（官方原文：「If a matching discussion cannot be found, the giscus bot will automatically create a discussion the first time someone leaves a comment or reaction.」）。详情页的按钮指向的正是市场自己用的那条链接。
 

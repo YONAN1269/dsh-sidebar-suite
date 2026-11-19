@@ -31,7 +31,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 - **零侵入 / Zero rewrites** — 只往 `<html>` 上写属性、加一条控制栏，绝不重构宿主 DOM，React 重绘后自动重新挂载，也不影响 `dsh-deepseek-chat` 这类别的插件。Only `<html>` attributes and one control bar; the host's markup is never restructured, everything re-resolves after React rebuilds, and other sidebar plugins keep working.
 - **会话不用再点「展开其余」/ No more "Show N more"** — 会话列表默认全部展开，折叠按钮也不再显示；按宿主自己的按钮展开、不改宿主 DOM。`EXPAND_ALL_SESSIONS=off` 可恢复原样。Every session is shown and the host's overflow control is hidden, driven through the host's own button; `EXPAND_ALL_SESSIONS=off` restores DSH's folding.
 - **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），**默认在退出 DSH 时删除**；**每天定时清理默认关**，需要时在本页开启并设时间；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar with the native window and current model/toolchain; it is **deleted when DSH quits by default**, while the **optional daily cleanup is off by default** — both switches live at the top of this page.
-- **反馈有确定入口 / Feedback that reaches someone** — 详情页底部三个按钮：复制报告（自动带上版本、系统、布局、最近错误）、预填的 GitHub Issue、插件市场规定的评论区。Three channels at the bottom of this page, with version, OS, layout and last error already filled in.
+- **反馈有确定入口 / Feedback that reaches someone** — 详情页底部三个按钮：复制报告（自动带上版本、系统、布局、最近错误；0.7.5 起末尾附 Discussions 与 issue 地址）、预填的 GitHub Issue、插件市场规定的评论区。Three channels at the bottom of this page, with version, OS, layout and last error already filled in; since 0.7.5 the copied report also ends with the Discussions and issue addresses.
 - **不联网 / Offline** — 收款码随插件打包由宿主本地提供，配置只落在本机 profile。The QR ships with the bundle and is served locally; config stays in your profile.
 - **中英双语 / Bilingual** — 界面文案、详情内容、设置说明全部中英对照。UI labels, this document and the settings copy are all bilingual.
 
@@ -69,7 +69,7 @@ DSH itself defines no feedback field for third-party bundles; the market's `dsh-
 The report always carries: plugin version (read from `package.json`, so it cannot drift from the code you run), desktop client version, Node / Electron, OS and arch, current layout, Temp-button mode, tracked session count, registered route count, the last cleanup result and the last error.
 
 - 草稿存在浏览器本地 `localStorage` 的 `dsh-sidebar-suite:feedback-draft`，关掉页面再回来还在。 / The draft lives in `localStorage`, so closing the page does not lose it.
-- 用不了 GitHub 就走剪贴板 —— 粘到任何能联系到作者的地方即可（**复制不会自动发送**）。 / No GitHub account? The clipboard path works with any channel; copied text is never sent automatically.
+- 不想跳浏览器就走剪贴板 —— 0.7.5 起报告末尾自带 Discussions 与 issue 地址，粘过去即可送达（**复制不会自动发送**）。 / Prefer to stay in the app? Since 0.7.5 the copied report ends with the Discussions and issue addresses; copied text is never sent automatically.
 - **作者在哪收到 / Where the author sees it**：issue 进本仓库 [Issues](https://github.com/YONAN1269/dsh-sidebar-suite/issues)（仓库所有者默认自动 watch，会收到通知；也可在仓库页 `Watch` → `All Activity` 确认）；市场评论进 [目录仓库的 Discussions](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/discussions?discussions_q=%22plugin%3AYONAN1269%2Fdsh-sidebar-suite%22)（**不在本仓库**，作者需要 watch 那条讨论）；统一收件箱 [github.com/notifications](https://github.com/notifications)。
 - 市场评论区第一次打开可能显示「There are no matching discussions.」——说明还没人留言；回 DSH 插件市场点该插件卡片的「评论」，第一条留言会自动建帖。 / If the marketplace thread is empty, press "评论 / Comments" on the plugin card inside the market — the first comment creates the discussion.
 - 直接开网页：[Issues](https://github.com/YONAN1269/dsh-sidebar-suite/issues/new/choose)（问题）、[Discussions](https://github.com/YONAN1269/dsh-sidebar-suite/discussions)（用法讨论）。
