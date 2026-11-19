@@ -128,8 +128,8 @@ export function apply(ctx) {
 dsh plugin --profile desktop add dsh-sidebar-suite
 ```
 
-本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.3（desktop profile）** 真机验证；`rc.1` / `rc.2` 同样兼容但已过时。逐项 DOM 对照见本文末尾「宿主兼容与契约表」。
-For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.3 (desktop profile)**; rc.1 / rc.2 still work but are superseded. See the host compatibility table at the end of this document for the per-version DOM diff.
+本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.5（desktop profile）** 真机验证；`rc.1` / `rc.2` / `rc.3` 同样兼容但已过时。逐项 DOM 对照见本文末尾「宿主兼容与契约表」。
+For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.5 (desktop profile)**; rc.1 / rc.2 / rc.3 still work but are superseded. See the host compatibility table at the end of this document for the per-version DOM diff.
 
 **升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
@@ -153,7 +153,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 「临时」按钮创建的**是一个真正的 DSH 会话**，因此：在左侧栏可见、用原生会话窗口、继承当前模型和工具链、可以随意切换任务；只有「退出即删除」这一点是插件加的。
 
-实现路径（在 `app.asar` 0.2.2-rc.1 上核实，2026-11-12 在 0.2.2-rc.2 真机上复核，调用链无变化）：
+实现路径（在 `app.asar` 0.2.2-rc.1 上核实，2026-11-12 在 rc.2 真机复核，2026-11-19 在本机 rc.5 再次复核，调用链无变化；rc.5 只是把宿主源码从 `app.asar` 解包到 `resources/app`）：
 
 - **创建**：Client 半调用 `ctx.get('uiWorkspace').createNamed({ workspaceId })` 再 `openSession(id)` —— 与宿主「新会话」按钮同一条链路（`dsh-client-ui-workspace` 的 `createInWorkspace` → `sessions.create` → `session/create`）。不传 `sessionId`，所以不会复用你已有的空白会话。
 - **标记**：把会话 id POST 给 Host 半，写进 `~/.dsh/dsh-sidebar-suite/temp-sessions.json`；侧栏行按 `data-row-key="session:<id>"` 打 `data-dsbs-temp-row` 属性，用 CSS `::after` 画「临时」标签（只加属性、不加节点，React 重渲染不会弄丢）。
@@ -208,7 +208,7 @@ Plain English: the Temp button now creates a real DSH session (sidebar entry, na
 
 ---
 
-## 宿主兼容与契约表 / Host compatibility & contracts（0.7.0）
+## 宿主兼容与契约表 / Host compatibility & contracts（0.7.4）
 
 > **维护者须知 / For maintainers**：本插件靠嗅探 DSH 侧栏的类名后缀和插槽来定位节点，不硬编码 CSS-module 哈希。DSH 每次改侧栏结构，按这张表逐项核对即可 —— 这是宿主假设的**唯一集中记录**，源码里的对应点都带 `rc.2` / `rc.3` 注释。改版时先搜这里的关键词。
 
@@ -221,13 +221,18 @@ Plain English: the Temp button now creates a real DSH session (sidebar entry, na
 | `button[data-row-key^="overflow:"]` | `expandAllSessions()` 折叠分组的展开按钮 | rc.1+ 稳定 | 搜 `overflow:` |
 | `[data-row-key^="session:"]` | 标记临时会话行、右键菜单定位 | 稳定 | 搜 `data-row-key` |
 | `sidebar.session.action` 插槽（hoc，`{ wide }`） | 临时按钮挂进「新会话」行的座位 | **rc.3 新增**；旧宿主自动回退到负边距路径 | 搜 `sidebar.session.action` |
+| `ctx.contextMenus.register()`（`target: 'session'`） | 临时会话行的 keep/delete/openDir 菜单 | **rc.1 新增**；旧宿主回退到 DOM `contextmenu` | 搜 `contextMenus`、`tempMenuActions` |
+| `ctx.slots.entriesOfSlot('sidebar.panellist.actions')` | 判断宿主是否已有原生「更多」收纳，决定是否隐藏自建页签条 | **rc.2 新增** | 搜 `nativeTabsAvailable` |
+| `remote.session.openWorkspacePath({ action: 'reveal' })` | 「打开会话目录」在资源管理器中显示路径 | 0.2.2 公开 Remote；失败退回复制路径 | 搜 `openSessionFolder` |
+| `/api/dsh-temp-session.paths`（GET，私有） | 返回被跟踪会话的日志目录绝对路径，供上面 reveal 使用；status 的 `routes.paths` 逐项参与健康徽标核对 | 插件自有路由 0.7.4 | 搜 `dsh-temp-session.paths` |
 | `[data-dsh-chat-content],[data-dsh-chat-layout]` | `chatModeActive()` 探测 dsh-deepseek-chat 的 CHAT 模式 | 第三方插件 | 搜 `dsh-chat-content` |
 
 **已适配的宿主改动史 / History of host DOM changes**
 
 - **rc.2（2026-11-12）**：侧栏根从 flex 列改成 CSS Grid，宿主面板被显式钉在特定行；`0.4.1` 把控制栏/页签条从 grid 移到父级 `scrollRegion`。
 - **rc.3（2026-11-13）**：「新会话」行新增 `sidebar.session.action` 官方插槽；`0.6.0` 把临时按钮从负边距 hack 改挂该插槽，同时保留旧宿主回退。
+- **rc.5（2026-11-18，本机当前版本）**：宿主源码从 `app.asar` 解包到 `resources/app`；`DSH_CLIENT_VERSION` 仍由桌面主进程注入，侧栏 / 菜单 / Remote 契约无变化。搜索计费策略调整未触及本插件。`scripts/smoke-l5.mjs` 已同时识别两种安装布局，L5 冒烟 3/3 通过。
 
 **约定原则 / Rules**：只匹配语义后缀（`/scrollArea/`、`/panelList/`），绝不匹配构建生成的哈希前缀；宿主改版优先走官方插槽/服务，其次才用 DOM 嗅探；嗅探逻辑集中在 `resolveSidebar()` 一处。
 
-回归：`tests/test_034.mjs` 把 rc.2 的 DOM 契约固化；`tests/test_035.mjs` 盯住 `scrollArea`/`scrollRegion` 解析；`tests/test_038.mjs` 盯住 rc.3 插槽；跑 `npm test` 全绿即视为契约未被破坏。
+回归：`tests/test_047.mjs` 是可重复的**宿主契约矩阵**——用表驱动的 rc.1 / rc.2 / rc.3 / rc.4 / rc.5 五个画像驱动真实 bundle，逐项核对侧栏解析、控制栏归属、会话插槽、原生菜单注册与实际「打开目录」分支（无 Remote 时复制、有 Remote 时带 signal reveal）；rc.3/rc.4/rc.5 客户端契约相同这点在矩阵里显式断言，rc.5 的解包差异由 smoke 工具断言覆盖。新宿主版本只需加一行画像。`tests/test_034.mjs` 固化 rc.2 的 DOM 类名契约；`tests/test_035.mjs` 盯住 `scrollArea`/`scrollRegion` 解析；`tests/test_038.mjs` 盯住 rc.3 插槽；`tests/test_045.mjs` 盯住缺关键路由时徽标转红；`tests/test_046.mjs` 覆盖 rc.1 统一菜单、rc.2 原生收纳让位与「打开会话目录」。跑 `npm test` 全绿即视为契约未被破坏。

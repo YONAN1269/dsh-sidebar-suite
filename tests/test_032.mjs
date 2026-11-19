@@ -207,12 +207,15 @@ async function main() {
       (menu.querySelector('[data-dsbs-temp-menu-head]') || {}).textContent === '会话 sess-a')
 
     const buttons = menuButtons(menu)
-    check('there are exactly two actions', buttons.length === 2, String(buttons.length))
+    check('there are exactly three actions', buttons.length === 3, String(buttons.length))
     check('the first action is "keep"', buttons[0].getAttribute('data-dsbs-temp-action') === 'keep')
     check('the second action is "delete"', buttons[1].getAttribute('data-dsbs-temp-action') === 'delete')
+    check('the third action opens the session folder',
+      buttons[2].getAttribute('data-dsbs-temp-action') === 'openDir')
     check('each action explains its consequence',
       buttons[0].querySelector('[data-dsbs-temp-menu-sub]') !== null &&
-      buttons[1].querySelector('[data-dsbs-temp-menu-sub]') !== null)
+      buttons[1].querySelector('[data-dsbs-temp-menu-sub]') !== null &&
+      buttons[2].querySelector('[data-dsbs-temp-menu-sub]') !== null)
     check('the destructive action is marked as such',
       buttons[1].getAttribute('data-dsbs-temp-action') === 'delete')
     check('the menu is positioned in viewport coordinates',

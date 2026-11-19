@@ -51,7 +51,7 @@ try {
   host.register(makeCtx(registered))
 
   // ---- routes -----------------------------------------------------------
-  check('routes: eight routes registered', registered.length === 8, 'got ' + registered.length)
+  check('routes: nine routes registered', registered.length === 9, 'got ' + registered.length)
   const paths = registered.map((r) => r.path)
   check('routes: config route present', paths.includes('/api/dsh-temp-session.config'))
   check('routes: status still present', paths.includes('/api/dsh-temp-session.status'))

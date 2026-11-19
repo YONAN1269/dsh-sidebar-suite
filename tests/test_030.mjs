@@ -258,8 +258,8 @@ check('isolation: a fresh client has no leftover tabs', fresh.service.getTabs().
 // ---- the strip only exists while someone registers ----------------------
 check('strip: rendered from the registry, not hard-coded markup',
   client.includes("strip.setAttribute('data-dsbs-tabs', '')"))
-check('strip: hidden when no plugin registered a tab',
-  /if \(!hasPlugin\) \{\s*strip\.setAttribute\('hidden', ''\)/.test(client))
+check('strip: hidden when no plugin registered a tab or host has native grouping',
+  /if \(!hasPlugin \|\| nativeTabsAvailable\) \{\s*strip\.setAttribute\('hidden', ''\)/.test(client))
 check('strip: built-in groups ride along in layout b',
   client.includes("out.push({ id: 'ext', builtin: true") && client.includes("out.push({ id: 'ws', builtin: true"))
 check('strip: built-ins are keyed on mode b',

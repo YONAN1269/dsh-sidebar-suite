@@ -118,8 +118,14 @@ try {
 
   const effectCtx2 = makeCtx({ effect: true })
   host2.bindSchedulerEffect(effectCtx2)
-  check('effect: re-applying does not stack effects', effectCtx2.effectCalls === 0)
+  check('effect: re-applying binds the NEW context', effectCtx2.effectCalls === 1)
   check('effect: re-applying still restarts the timer', host2.state.scheduler.timer !== null)
+  // 0.7.4: a hot reload disposes the OLD scope after the new one is bound.
+  // Its stale cleanup must not stop the timer the new scope owns.
+  for (const dispose of effectCtx.disposers) dispose()
+  check('effect: stale disposer leaves the new timer alive', host2.state.scheduler.timer !== null)
+  for (const dispose of effectCtx2.disposers) dispose()
+  check('effect: new disposer stops the timer', host2.state.scheduler.timer === null)
   host2.stopScheduler()
 
   // ---- 6. source-level contract -----------------------------------------
@@ -127,7 +133,8 @@ try {
   check('source: configPath uses dshHome()', /function configPath\(\)[\s\S]{0,160}join\(dshHome\(\)/.test(src))
   check('source: packaged path is only read from', src.includes("join(PLUGIN_ROOT, 'temp-session-config.txt')"))
   check('source: register binds the effect', src.includes('bindSchedulerEffect(hostCtx)'))
-  check('source: disposer calls stopScheduler', /return \(\) => stopScheduler\(\)/.test(src))
+  check('source: disposer calls stopScheduler',
+    /if \(state\.schedulerCtx !== boundCtx\) return[\s\S]{0,220}stopScheduler\(\)/.test(src))
 } finally {
   if (host) {
     try { host.state.tracked = [] } catch (error) { void error }

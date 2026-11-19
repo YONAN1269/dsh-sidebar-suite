@@ -1,12 +1,58 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
+
+## 0.7.4 — DSH 0.2.2 rc.1–rc.5 适配与发布前审阅修复（2026-11-19）
+
+承接 screenshot 里列的 5 条完善方向（第 1 条自检徽标已在 0.7.3 完成），完成 2–5 条，并经两轮发布前审阅修复。已在 **DSH 0.2.2-rc.5** 真机与 L5 冒烟验证。回归见 `tests/test_046.mjs`（27 项）、`tests/test_047.mjs`（25 项）、`tests/test_048.mjs`（12 项）与更新后的 `test_020` / `test_022` / `test_030` / `test_032`。
+
+- **会话右键菜单接入宿主统一扩展**：rc.1 起宿主提供 `ctx.contextMenus.register()`，会话行右键由它接管（并 `stopPropagation()`），原 DOM `contextmenu` 监听在 rc.1+ 根本收不到事件。现在所有宿主上注册一条 `target: 'session'` 的原生菜单贡献，`resolve()` 只对临时会话行返回动作；旧宿主（无该服务）自动保留原 DOM 菜单作回退。keep/delete/openDir 三个动作由 `tempMenuActions()` 单点定义，两条路径不再各写一份。
+- **新增「打开会话目录」动作**：宿主侧新增只读 `/api/dsh-temp-session.paths` 路由（只返回被跟踪会话的绝对路径，复用现有安全路径守卫）；客户端用宿主公开 Remote `remote.session.openWorkspacePath({ action: 'reveal' })` 在资源管理器里显示目录，失败或不可用时退回复制路径到剪贴板并给出提示，不再出现「点了没反应」。
+- **自建页签条让位给宿主原生收纳**：rc.2 起宿主用 `sidebar.panellist.actions` 提供原生「更多」入口，与自建 strip 语义重叠。检测到该能力时隐藏自建 strip、清掉可能残留的 active tab（避免「面板还在、却没有任何页签能点出去」的死状态），并在 `registerTab()` 里给消费方一次性迁移提示；API 保留兼容，旧宿主行为不变。
+- **宿主契约从人工 CDP 验证改成可重复测试矩阵**：`tests/test_047.mjs` 用表驱动的 rc.1 / rc.2 / rc.3 / rc.5 四个宿主画像驱动真实 bundle，逐项断言侧栏解析、控制栏归属、会话插槽注册与原生菜单注册是否与宿主能力一致；新增画像只需加一行，不需要再连 CDP。
+- **健康徽标补充策略信息**：详情自检里新增两行只读信息——当前右键菜单走原生还是 DOM 回退、页签条走自建还是宿主收纳；这两行不计入 `n/3` 契约通过数，也不会把徽标变红。
+
+### 发布前审阅发现的缺陷（同日修复，随 0.7.4 发布）
+
+- **打开目录在真实宿主里会直接失败**：宿主 `openWorkspacePath` 的 Remote 声明了 cancellation，服务端会读 `signal.aborted`；原调用没传 signal，导致 reveal 必然失败、永远走「复制路径」兜底。现在传 `AbortController.signal`，与宿主官方插件一致（`lib/client.js`）。
+- **复制失败却提示「路径已复制」**：异步剪贴板 API 的 Promise 结果原本被忽略，`copyText()` 永远返回成功。现在返回 `Promise<boolean>` 并等待结果；复制真的失败时把完整路径显示给用户，不再假报成功（`lib/client.js`）。
+- **原生菜单启用后 DOM 回退没有关闭**：两套菜单可能对同一次右键同时响应，健康徽标却声称走原生。现在原生注册成功即拆掉 DOM 监听，两个入口都按 `tempMenuMode` 判定（`lib/client.js`）。
+- **热重载时原生菜单没有注销**：disposer 原本只交给宿主 effect，旧 run 的 teardown 管不到它，第二次注册会因 id 重复而失败回退。现在同一个幂等 disposer 同时交给 teardown 与宿主作用域，重复 teardown 也不会误删新注册（`lib/client.js`）。
+- **「打开目录」在链接工作区误报目录不存在**：链接目录被删除守卫拒绝，因此路径查询返回空数组、页面提示「目录已经不在磁盘上」，与删除提示给出的路径自相矛盾。现在路径接口在此场景下返回仅供展示/定位的准确路径（绝不喂给删除逻辑），并收紧链接判定：只有 realpath 真的离开 sessions 根才算这类情况，ACL/IO 错误仍走重试（`lib/temp-session-host.mjs`）。
+- **页签让位只检测一次**：宿主若在插件 apply 之后才填充 `sidebar.panellist.actions`，自建 strip 会一直留着。现在订阅该 slot，出现原生收纳时即时隐藏并清掉残留选中页（`lib/client.js`）。
+- **两条永远通过的假断言**：`test_046` 里 `check(..., () => true)` 已改成真实断言（原生模式进入健康详情、动作带 run 回调）；新增 `test_048.mjs`（12 项）直接调用真实路由处理器，覆盖普通/链接会话、未跟踪 id、四种遍历输入与只读方法，并实测 DOM 回退关闭、teardown 幂等、slot 延迟填充与复制失败提示。
+- **L5 冒烟脚本认不出 rc.5 安装布局**：rc.5 把宿主 CLI 从 `resources/app.asar/...` 挪到真实的 `resources/app/...`，`scripts/smoke-l5.mjs` 只认旧路径，导致发布前自检误报「找不到 dsh 启动器」。现在两种布局都识别，`--cli` 传安装目录或 exe 均可；本机实测 DSH 0.2.2-rc.5 可完成启动与 HTTP 探测。
+- **文档真机版本更新**：`README.md` / `DETAIL.md` / `使用说明.md` 的验证版本从 rc.3 更新为本机当前 rc.5，并明确 rc.5 只是解包布局变化、插件消费的侧栏 / 插槽 / 菜单 / Remote 契约未变。
+
+### 第二轮审阅修复（随 0.7.4 发布）
+
+- **反馈报告泄露本地绝对路径**：链接工作区的删除提示把完整路径写进了 `lastError`，而「复制报告 / 提 issue」会把它原样塞进公开 issue URL。现在 host 只把不带路径的原因写进 `lastError`（路径仍保留在本地 toast / 路由响应里），客户端再对反馈文本做一次绝对路径脱敏为 `<path>`；`test_023` 验证复制文本与 issue URL 都不再含本机路径。
+- **健康徽标只看路由数量，会误报 3/3**：原来 `routes.registered > 0` 就算私有接口通过，9 条里任意一条注册失败仍显示绿灯。现在 status 返回实际注册的 `routes.paths`，客户端逐项核对 9 个必需端点，缺 `paths` 等路由会转红并列出缺哪条；`test_045` 用真实组件验证了缺路由时的 2/3 与明细。
+- **契约矩阵覆盖不实**：`test_047` 原把 rc.5 写成与 rc.3 完全相同的画像，且 rc.1 也注入了它并不具备的 `remote.session`。现在补齐 rc.4 画像，明确 rc.3/rc.4/rc.5 客户端契约相同、差异只在 rc.5 的 `resources/app` 解包布局；rc.1 不再注入 Remote，并通过真实 DOM 回退验证「复制路径」而不是空动作；rc.2+ 则验证 reveal 调用确实带取消信号且不走剪贴板。rc.5 的解包差异由 smoke 工具断言覆盖。
+- **继续替换快照式断言**：上一轮标记的 `setField` / `tempCall` 看门狗 / schedulerCtx 归属仍以源码快照为主；本轮新增的缺路由、脱敏、Remote/复制分支均改为驱动真实组件或真实路由处理器的行为测试。剩余快照断言已在 `test_045` / `test_047` 中明确标注为工具/源码守卫，不再冒充行为验证。
+
+### 发布前终审（2026-11-19）
+
+- 独立终审复查了 `setField` 回滚、`tempCall` 看门狗 settled 守卫、schedulerCtx 归属、saveStore 失败回滚、异步 `ctx.inject` 时序、打包白名单与版本号一致性：**未发现新的功能缺陷**，前两轮遗留项经读码确认逻辑正确，无需改动。
+- 仅做发布规范化：`package.json` / `lib/client.js` 版本统一 bump 到 0.7.4，CHANGELOG 补发布章节；顺手修正 `test_046` 一条断言名实不符的文案。
+- 打包白名单不含任何运行时凭据；文档中的 `C:\Users\12691\...` 为标注给用户的 Windows 示例路径、非真实私密数据，保留。
+
+## 0.7.3 — 审计修复与契约自检徽标（2026-11-18 追加）
+
+本轮修可靠性缺陷，并在详情页新增一个自检徽标；未 bump 版本号、未打包、未发布。回归见 `tests/test_043.mjs`（22 项）、`tests/test_044.mjs`（20 项）、`tests/test_045.mjs`（26 项）与更新后的 `test_039`。
+
+- **热重载后定时器脱离生命周期**：`bindSchedulerEffect()` 的一次性 `schedulerEffectBound` 守卫会把 effect 绑在旧 ctx 上；新 ctx 接管后，旧作用域的 disposer 反过来停掉新定时器，造成「插件已禁用却仍在每 30 秒删临时会话」。现在按 `schedulerCtx` 判定归属，只对当前 ctx 绑定，旧 cleanup 变成 no-op（`lib/temp-session-host.mjs`）。
+- **status 请求永不返回导致临时功能整页失效**：`loadTempStatus()` 的 fetch 加了 20 秒看门狗；超时走既有退避重试，不再让 `tempStatusPending` 永久为 true（`lib/client.js`）。
+- **配置写入失败却显示成功**：`setField()` 和详情卡的 `writeDefaultMode()` 在 `mutate()` 抛错、返回 false 或以 rejected promise 失败时，回滚内存值并弹出错误提示，不再出现「开关/默认布局看着生效、重启后回退」（`lib/client.js`）。
+
+- **详情页新增「宿主版本 / 契约自检」徽标**：标题旁显示 DSH 桌面端版本（取自已有 status 接口，缺失显示 `?`）和 `通过数/3`，点开后逐项列出侧栏结构、会话按钮插槽、私有接口的状态与具体原因；红色时提供「重新检测」并指引到已有的反馈区。三态用文字 + 数字 + 颜色共同表达，避免只靠颜色分辨；尚未检测完不显示绿色，避免假成功。插槽注册与 status 请求原本吞掉的错误现在会记录并显示（`lib/client.js`）。
+- **链接工作区里的临时会话永远删不掉（同轮后续修复）**：`indexSessionIds()` 会跟随 junction / 符号链接看到里面的会话，而删除守卫 `safeSessionDir()` 明确拒绝穿过链接删除——两条规则各自都对，合起来却是死状态：每次启动和每 30 秒定时都无限重试，页面点「删除」也没反应。现在**保留安全拒绝**（不放宽到 sessions 根目录之外），但准确识别这一种情况：停止重试、把 id 移出跟踪，并把可直接打开的具体路径返回给用户手动处理；手动删除、定时清理、退出清理三条路径行为一致（`lib/temp-session-host.mjs`）。
 
 ## 0.7.3 — 再排查：存储完整性、僵尸 id 与操作反馈（2026-11-17）
 

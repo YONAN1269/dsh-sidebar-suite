@@ -88,6 +88,21 @@ function isReachable(cliJs) {
   return existsSync(cliJs.slice(0, idx) + 'app.asar')
 }
 
+// rc.5 moved the unpacked host sources from resources/app.asar/... to a real
+// resources/app/... tree. Accept both layouts so the smoke check keeps working
+// on the version the user actually has installed.
+function desktopCliFromBase(baseDir) {
+  const rel = 'dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js'
+  const candidates = [
+    join(baseDir, 'resources/app.asar', rel),
+    join(baseDir, 'resources/app', rel),
+  ]
+  for (const candidate of candidates) {
+    if (isReachable(candidate)) return candidate
+  }
+  return null
+}
+
 function findLauncher() {
   const tries = []
   if (opts.cli) tries.push(opts.cli)
@@ -108,8 +123,8 @@ function findLauncher() {
   for (const candidate of tries) {
     if (!candidate || !existsSync(candidate)) continue
     if (candidate.toLowerCase().endsWith('.exe')) {
-      const cliJs = resolve(dirname(candidate), 'resources/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js')
-      if (isReachable(cliJs)) return { exe: candidate, prefix: ['--expose-internals', cliJs], label: candidate }
+      const cliJs = desktopCliFromBase(dirname(candidate))
+      if (cliJs) return { exe: candidate, prefix: ['--expose-internals', cliJs], label: candidate }
       continue
     }
     if (statSync(candidate).isDirectory()) {
@@ -117,6 +132,12 @@ function findLauncher() {
       if (existsSync(inner)) {
         const l = launcherFromCmd(inner)
         if (l) return l
+      }
+      // rc.5 has no dsh.cmd; launch the exe directly with the unpacked CLI.
+      const exe = join(candidate, WIN ? 'DeepSeek Harness.exe' : 'DeepSeek Harness')
+      if (existsSync(exe)) {
+        const cliJs = desktopCliFromBase(candidate)
+        if (cliJs) return { exe, prefix: ['--expose-internals', cliJs], label: exe }
       }
       continue
     }

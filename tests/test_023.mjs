@@ -315,9 +315,9 @@ const rich = buildClient(async (url) => {
       tempCount: 2,
       deleteOnExit: true,
       scheduleDelete: false,
-      routes: { registered: 7, errors: [] },
+      routes: { registered: 7, errors: [], paths: ['/api/dsh-temp-session.status', '/api/dsh-temp-session.list'] },
       lastPurge: { reason: 'quit', at: '2026-11-10T09:00:00.000Z', tried: 2, removed: 2, hidden: 0, failed: [] },
-      lastError: 'delete t1 failed: EBUSY',
+      lastError: 'delete t1 failed: EBUSY at C:\\Users\\12691\\.dsh\\sessions\\proj\\t1',
       env: RICH_ENV,
     })
   }
@@ -355,6 +355,7 @@ if (copyBtn) {
   check('feedback: copy carries the system', report.includes('win32 10.0.22631 x64'), report)
   check('feedback: copy carries the route count', report.includes('routes: 7'))
   check('feedback: copy carries the last error', report.includes('EBUSY'))
+  check('feedback: local absolute paths are redacted', report.includes('<path>') && !report.includes('C:\\Users'), report)
   check('feedback: copy carries the last cleanup', report.includes('last cleanup: quit'))
   ftree = rich.render()
   check('feedback: copy confirmation shown', textOf(ftree).includes('已复制'), textOf(ftree).slice(-180))
@@ -372,6 +373,7 @@ if (issueBtn) {
   const decoded = openedUrl ? decodeURIComponent(openedUrl) : ''
   check('feedback: issue title is the first line', decoded.includes('点「临时」后侧栏没有新会话'), decoded.slice(0, 160))
   check('feedback: issue body is the report', decoded.includes('plugin: 0.2.3'))
+  check('feedback: issue URL never leaks a local path', !decoded.includes('C:\\Users'), decoded.slice(-200))
   check('feedback: issue URL stays short enough', openedUrl.length < 7000, String(openedUrl.length))
 }
 
