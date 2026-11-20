@@ -126,10 +126,12 @@ try {
   await call('/api/dsh-temp-session.track?sessionId=' + RETRY, { method: 'POST' })
   await call('/api/dsh-temp-session.purge', { method: 'POST' })
   const firstEntry = entriesOf(RETRY)[0] || ''
+  const firstDeletedAt = (metaOf(firstEntry) || {}).deletedAt
   check('A1: the first delete parks one entry', entriesOf(RETRY).length === 1, trashDirs())
 
   // Simulate the state a half-failed cp+rm leaves behind: the entry exists with
   // what was copied, and the original directory is back (partly deleted).
+  await new Promise((resolve) => setTimeout(resolve, 25))
   fs.mkdirSync(retryDir, { recursive: true })
   fs.writeFileSync(path.join(retryDir, 'left-behind.jsonl'), 'second-half')
   await call('/api/dsh-temp-session.track?sessionId=' + RETRY, { method: 'POST' })
@@ -139,6 +141,11 @@ try {
     entriesOf(RETRY).length === 1, trashDirs())
   check('A1: the reused entry keeps its original key', entriesOf(RETRY)[0] === firstEntry,
     { firstEntry, now: entriesOf(RETRY) })
+  const retriedDeletedAt = (metaOf(firstEntry) || {}).deletedAt
+  check('A1: the retry restarts the retention clock instead of inheriting the old deadline',
+    Number.isFinite(Date.parse(firstDeletedAt)) && Number.isFinite(Date.parse(retriedDeletedAt)) &&
+    Date.parse(retriedDeletedAt) > Date.parse(firstDeletedAt),
+    { firstDeletedAt, retriedDeletedAt })
   check('A1: the leftover files were merged into the entry',
     !!firstEntry && fs.existsSync(path.join(TRASH, firstEntry, 'data', 'left-behind.jsonl')) &&
     fs.existsSync(path.join(TRASH, firstEntry, 'data', 'session.jsonl')),
@@ -230,6 +237,9 @@ try {
     fs.readdirSync(path.join(TRASH, priorKey, 'data')))
   check('A6: the label from the first attempt survives the retry',
     (metaOf(priorKey) || {}).title === 'label from the first attempt', metaOf(priorKey))
+  check('A6: the quit path restarts the retention clock as well',
+    Date.parse((metaOf(priorKey) || {}).deletedAt) > Date.parse('2026-11-20T00:00:00.000Z'),
+    metaOf(priorKey))
   check('A6: the original directory is gone', !fs.existsSync(syncDir))
 } finally {
   fs.rmSync(HOME, { recursive: true, force: true })
@@ -341,7 +351,8 @@ function mountDetail(options) {
       if (name === 'config') return POLICY
       if (name === 'trash') return trashBody
       if (name === 'list') return { ok: true, ids: [], count: 0 }
-      if (name === 'trash-delete' || name === 'trash-restore') return { ok: true }
+      if (name === 'trash-delete') return { ok: true }
+      if (name === 'trash-restore') return opts.restoreBody || { ok: true }
       if (name === 'trash-empty') return { ok: true, removed: 2, failed: 0 }
       return { ok: true }
     })()
@@ -480,6 +491,40 @@ async function main() {
   // ---- B5. an oversize entry is explained -------------------------------
   check('B5: the oversize entry says why it is still here',
     footerText.indexOf('超过') >= 0 || footerText.indexOf('over the cap') >= 0, footerText.slice(0, 400))
+
+  // ---- B6. an older Host half still renders -----------------------------
+  // The client and the Host ship together, but during a reload one half can be
+  // the previous build. A 0.8.0 trash payload has no caps, no total and no
+  // titles; the section must degrade instead of rendering "undefined".
+  const legacy = mountDetail({
+    trashBody: {
+      ok: true, keepDeleted: true, keepDeletedDays: 7,
+      entries: [{ key: '1700000000000-session-051-old', id: 'session-051-old', workspace: '--proj--', deletedAt: '2026-11-20T00:00:00.000Z', bytes: 1024 }],
+    },
+  })
+  legacy.render()
+  for (const fn of legacy.effects.splice(0)) fn()
+  await settle(); await tick()
+  const legacyText = textOf(trashSection(legacy.render()))
+  check('B6: an entry without a title falls back to its id', legacyText.indexOf('session-051-old') >= 0,
+    legacyText.slice(0, 240))
+  check('B6: a payload without caps renders no caps line and no "undefined"',
+    legacyText.indexOf('上限') < 0 && legacyText.indexOf('undefined') < 0, legacyText.slice(0, 300))
+
+  // ---- B7. the restore refusal shows the path to clear ------------------
+  const blocked = mountDetail({
+    restoreBody: { ok: false, code: 'target-exists', target: 'C:/fake/sessions/--proj--/session-051-alpha' },
+  })
+  blocked.render()
+  for (const fn of blocked.effects.splice(0)) fn()
+  await settle(); await tick()
+  const restoreBtn = findAll(trashSection(blocked.render()), (n) => n.type === 'button' && textOf(n).indexOf('恢复') >= 0)[0]
+  check('B7: a restore button exists', !!restoreBtn)
+  if (restoreBtn) restoreBtn.props.onClick()
+  await settle(); await tick()
+  const blockedText = textOf(trashSection(blocked.render()))
+  check('B7: the refusal names the directory to move away',
+    blockedText.indexOf('C:/fake/sessions/--proj--/session-051-alpha') >= 0, blockedText.slice(0, 300))
 }
 
 try {
