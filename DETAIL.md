@@ -202,7 +202,7 @@ Plain English: right-clicking a temporary row opens a two-item menu. "Keep" simp
 - 文件被占用导致删不掉时，先归档隐藏，下一次启动再删。
 - CHAT 官网模式下临时按钮默认隐藏（那条链路是 DeepSeek 网页账号，和 DSH 会话不是一回事）；`TEMP_IN_CHAT_MODE=show` 可强显，`TEMP_BUTTON_STYLE=own` 可完全避开与侧栏顶部控件的抢位。
 - 右键菜单只作用于**临时会话行**。若另一个插件也接管了这些行的右键，把 `TEMP_ROW_MENU` 改成 `off` 让出位置（详情页有同一个开关）。
-- 菜单动作是异步的：点「立即删除」后，行从列表里消失要等宿主自己刷新（插件会尝试调 `uiWorkspace().sessions.reload/refresh/invalidate`，没有这个 API 时静默跳过）。
+- 菜单动作是异步的：删除/保留/清理/恢复成功后，插件会主动调用 `uiWorkspace().sessions.reload/refresh/reloadSessions/invalidate` 让宿主重读列表；宿主没有这些 API 时也不会卡住，插件会同步摘掉自己的临时行标记，行在宿主下次刷新列表时消失。
 
 **侧栏顶部按钮的 DOM 约束（0.2.1）**：`dsh-deepseek-chat` 的侧栏适配器（`lib/client.js` 里的 `attachSidebarAdapter`）会从 `sidebar.brand.name` 插槽往上走五层，然后要求侧栏根节点下 `<button>` 子元素**恰好 1 个**（`controls()` 里的 `buttons.length === 1 && buttons[0] === row.nextElementSibling`）。0.2.0 把「临时」按钮作为根节点的第 2 个 `<button>` 插进去，适配器直接 `return null`，于是它在切换器下渲染「当前侧栏不兼容：顶部新会话仍使用 HARNESS」并且不再接管「新会话」。0.2.1 把按钮装进 `[data-dsbs-temp-slot]`（`<div>`），根节点的 `<button>` 计数回到 1，适配器恢复。回归测试见 `_probe/chat-compat.mjs`：它从插件 bundle 里抽出真实的 `attachSidebarAdapter` 跑一遍假 DOM。
 

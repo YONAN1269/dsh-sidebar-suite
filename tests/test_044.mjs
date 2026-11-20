@@ -110,7 +110,8 @@ async function main() {
   check('source: removeOne is exposed for the route', HOST_SRC.includes('    removeOne,'))
   check('client: the refusal reason reaches the user',
     CLIENT_SRC.includes("throw new Error((data && data.error) || 'delete failed')") &&
-    CLIENT_SRC.includes("toast(t('temp.menu.failed') + String((error && error.message) || error), true)"))
+    CLIENT_SRC.includes("toast(opError('temp.menu.failed', error), true)") &&
+    CLIENT_SRC.includes("var message = String((error && error.message) || error)"))
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail > 0) process.exitCode = 1
