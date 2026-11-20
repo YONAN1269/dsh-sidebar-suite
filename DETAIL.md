@@ -30,7 +30,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 - **会话与默认分离 / Session ≠ default** — 侧栏上临时换布局只影响本次会话，不写盘；只有详情页的设置会改默认值。Switching from the sidebar bar is session-only; only this page changes the startup default.
 - **零侵入 / Zero rewrites** — 只往 `<html>` 上写属性、加一条控制栏，绝不重构宿主 DOM，React 重绘后自动重新挂载，也不影响 `dsh-deepseek-chat` 这类别的插件。Only `<html>` attributes and one control bar; the host's markup is never restructured, everything re-resolves after React rebuilds, and other sidebar plugins keep working.
 - **会话不用再点「展开其余」/ No more "Show N more"** — 会话列表默认全部展开，折叠按钮也不再显示；按宿主自己的按钮展开、不改宿主 DOM。`EXPAND_ALL_SESSIONS=off` 可恢复原样。Every session is shown and the host's overflow control is hidden, driven through the host's own button; `EXPAND_ALL_SESSIONS=off` restores DSH's folding.
-- **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），**默认在退出 DSH 时删除**；**每天定时清理默认关**，需要时在本页开启并设时间；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar with the native window and current model/toolchain; it is **deleted when DSH quits by default**, while the **optional daily cleanup is off by default** — both switches live at the top of this page.
+- **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），**默认在退出 DSH 时删除**（0.8.0 起先移进本机回收站留 7 天，误删可恢复）；**每天定时清理默认关**，需要时在本页开启并设时间；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar with the native window and current model/toolchain; it is **deleted when DSH quits by default** (since 0.8.0 the bytes go to a local trash for 7 days first), while the **optional daily cleanup is off by default** — both switches live at the top of this page.
 - **删错了能捡回来 / Deletion is undoable（0.8.0）** — 删除改成先把会话移进本机回收站（保留 7 天可改、上限 20 条 / 200MB），详情页「最近删除」里能恢复、彻底删除、清空；恢复出来的是普通会话，不再算临时。Deletion moves the session into a local trash first (7 days by default, capped at 20 items / 200 MB); the "Recently deleted" section restores, purges or empties it, and a restored session becomes an ordinary one.
 - **反馈有确定入口 / Feedback that reaches someone** — 详情页底部三个按钮：复制报告（自动带上版本、系统、布局、最近错误；0.7.5 起末尾附 Discussions 与 issue 地址）、预填的 GitHub Issue、插件市场规定的评论区。Three channels at the bottom of this page, with version, OS, layout and last error already filled in; since 0.7.5 the copied report also ends with the Discussions and issue addresses.
 - **不联网 / Offline** — 收款码随插件打包由宿主本地提供，配置只落在本机 profile。The QR ships with the bundle and is served locally; config stays in your profile.
@@ -149,7 +149,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 ## 临时会话 / Temporary session（0.2.0）
 
-> **默认行为 / Defaults**：`DELETE_ON_EXIT=on` —— 临时会话**默认在退出 DSH 时删除**；`SCHEDULE_DELETE=off` —— **每天定时清理默认关**，只有你在详情页打开它并设了时间才会按天清理。两项互不影响，可以同时开。
+> **默认行为 / Defaults**：`DELETE_ON_EXIT=on` —— 临时会话**默认在退出 DSH 时删除**（0.8.0 起数据先移进本机回收站，默认留 7 天可恢复，`KEEP_DELETED=off` 才是当年那种直接删）；`SCHEDULE_DELETE=off` —— **每天定时清理默认关**，只有你在详情页打开它并设了时间才会按天清理。两项互不影响，可以同时开。
 > **Defaults**: temp sessions are **deleted when DSH quits by default**; **daily cleanup is off by default** and only runs after you enable it and pick a time. The two switches are independent.
 
 「临时」按钮创建的**是一个真正的 DSH 会话**，因此：在左侧栏可见、用原生会话窗口、继承当前模型和工具链、可以随意切换任务；只有「退出即删除」这一点是插件加的。
@@ -164,7 +164,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 **为什么删除是安全的**：`dsh-session-query-sqlite` 的 `_reconcile()` 会拿「磁盘上实际存在的会话」和索引行对比，多出来的行直接 `persistentDeletes`，因此删目录之后搜索索引会自愈，不会留下点不开的幽灵会话。
 
-配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `TEMP_ROW_MENU` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` —— **全部 9 项都能在详情页设**，用记事本改 DSH 数据目录里那份文件（`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`）的等号右边也行，保存后约 3 秒自动生效，不用重启。
+配置：`SHOW_TEMP_BUTTON` / `TEMP_IN_CHAT_MODE` / `TEMP_BUTTON_STYLE` / `EXPAND_ALL_SESSIONS` / `TEMP_ROW_MENU` / `DELETE_ON_EXIT` / `SCHEDULE_DELETE` / `SCHEDULE_TIME` / `MAX_KEPT` / `KEEP_DELETED` / `KEEP_DELETED_DAYS` —— **全部 11 项都能在详情页设**，用记事本改 DSH 数据目录里那份文件（`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`）的等号右边也行，保存后约 3 秒自动生效，不用重启。
 
 **详情页设置（0.2.2）**：插件详情页顶部卡片新增「临时会话自动删除」区块 —— 「退出 DSH 时删除」和「每天定时清理 + 时间」两个独立开关。它不走 `configForms`，而是 `GET/POST /api/dsh-temp-session.config` 交给 Host 半执行，因为**只有一个数据源**：DSH 数据目录里的 `temp-session-config.txt`。Host 半按行替换（`KEY=value` 只换 `= ` 右边），注释、空行、键顺序原样保留，用户手写的内容不会丢；缺失的键追加到末尾。保存后立即 `restartScheduler()`，无需重启。
 

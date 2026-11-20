@@ -269,7 +269,10 @@ async function main() {
       call.length === 1 && call[0].method === 'POST' && call[0].url.includes('sessionId=sess-b'))
     check('the deleted row loses its temporary marking',
       !instance.rows['sess-b'].hasAttribute('data-dsbs-temp-row'))
-    check('the user is told it was deleted', toastText(instance.doc).includes('已删除'), toastText(instance.doc))
+    // 0.8.1: the toast must not imply the session is gone for good — it is in
+    // the trash and restorable for KEEP_DELETED_DAYS.
+    check('the user is told it moved to the trash',
+      toastText(instance.doc).includes('已移到最近删除'), toastText(instance.doc))
     check('the other temporary row is untouched',
       instance.rows['sess-a'].hasAttribute('data-dsbs-temp-row'))
   }

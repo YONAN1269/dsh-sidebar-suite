@@ -500,7 +500,13 @@ if (purgeBtn) {
   purgeBtn.props.onClick()
   await new Promise((r) => setTimeout(r, 80))
   check('0.2.8: cleanup calls the purge route', ui.requests.some((r) => r.url.includes('dsh-temp-session.purge')))
-  check('0.2.8: cleanup result is shown', textOf(ui.render()).includes('已清理 / Removed 2'))
+  // 0.8.1: with the trash on, the copy went from "Removed 2" (a lie — they are
+  // restorable) to "Moved to Recently deleted".
+  check('0.2.8: cleanup result is shown',
+    textOf(ui.render()).includes('已移入最近删除 / Moved to Recently deleted: 2'),
+    textOf(ui.render()).slice(-160))
+  check('0.2.8: cleanup does not claim the sessions were removed while the trash is on',
+    !textOf(ui.render()).includes('已清理 / Removed 2'))
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')

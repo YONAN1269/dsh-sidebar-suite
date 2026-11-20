@@ -74,7 +74,8 @@ KEEP_DELETED=on
 
 # 回收站保留天数（1–365）/ Trash retention in days (1–365)
 # 过期条目在下次启动或打开详情页时自动清掉；另外最多留 20 条 / 200MB。
+# 最新删的那一条不受 200MB 限制（单条超大时只保留它自己）。
 # Expired entries are removed at the next start or page open; also capped at
-# 20 items / 200 MB.
+# 20 items / 200 MB. The most recent entry is exempt from the size cap.
 KEEP_DELETED_DAYS=7
 
