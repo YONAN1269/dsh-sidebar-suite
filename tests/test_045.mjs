@@ -206,7 +206,13 @@ async function main() {
 
   for (const fn of good.effects.splice(0)) fn()
   await settle(); await tick()
-  check('badge: status payload reached the component state', !!good.stateOverrides[6])
+  // 0.8.0: written as "some state holds a checks array" instead of a slot index.
+  // A fixed index breaks every time a useState is added above (the trash section
+  // added two), and the failure then looks like a badge regression.
+  check('badge: status payload reached the component state',
+    good.stateOverrides.some(function (value) {
+      return !!value && typeof value === 'object' && !!value.env
+    }))
 
   good.resetStateIdx()
   rendered = Component()

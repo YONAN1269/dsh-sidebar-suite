@@ -48,10 +48,14 @@ const { createTempSessionHost } = await import(pathToFileURL(ROOT + '/lib/temp-s
 const host = createTempSessionHost(hostCtx)
 host.register(hostCtx)
 
-check('host: 9 routes registered', host.state.routes.registered === 9, host.state.routes)
+// 0.8.0: nine session routes + four trash routes (list / restore / delete / empty).
+check('host: 13 routes registered', host.state.routes.registered === 13, host.state.routes)
 check('host: no route errors', host.state.routes.errors.length === 0, host.state.routes.errors)
 host.register(hostCtx)
-check('host: re-register keeps 9 routes (idempotent)', host.state.routes.registered === 9, host.state.routes.registered)
+check('host: re-register keeps 13 routes (idempotent)', host.state.routes.registered === 13, host.state.routes.registered)
+check('host: trash routes are mounted', ['trash', 'trash-restore', 'trash-delete', 'trash-empty'].every(function (name) {
+  return host.state.routes.paths.includes('/api/dsh-temp-session.' + name)
+}), host.state.routes.paths)
 check('host: config parsed', host.state.config.found === true && host.state.config.deleteOnExit === true && host.state.config.maxKept === 20, host.state.config)
 check('host: button style defaults to pair', host.state.config.buttonStyle === 'pair', host.state.config.buttonStyle)
 
