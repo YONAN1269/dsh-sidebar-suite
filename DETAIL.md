@@ -33,6 +33,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 - **临时会话 / Temporary session** — 点「临时」在左侧栏开一个**真正的 DSH 会话**（原生窗口、当前模型与工具链、可并行多任务），**默认在退出 DSH 时删除**（0.8.0 起先移进本机回收站留 7 天，误删可恢复）；**每天定时清理默认关**，需要时在本页开启并设时间；两个开关都在本页顶部，改完立即生效。Opens a real DSH session in the sidebar with the native window and current model/toolchain; it is **deleted when DSH quits by default** (since 0.8.0 the bytes go to a local trash for 7 days first), while the **optional daily cleanup is off by default** — both switches live at the top of this page.
 - **删错了能捡回来 / Deletion is undoable（0.8.0，0.8.1 补细节）** — 删除改成先把会话移进本机回收站（保留 7 天可改、上限 20 条 / 200MB），详情页「最近删除」里能恢复、彻底删除、清空；恢复出来的是普通会话，不再算临时。列表以会话自己的标题开头（取不到时显示 ID），页脚写明「共 N 条 · 占用 · 上限 20 条 / 200MB」；「彻底删除」「清空」要点两次并可以「取消」，任何其它操作都会解除那个确认。Deletion moves the session into a local trash first (7 days by default, capped at 20 items / 200 MB); the "Recently deleted" section restores, purges or empties it, and a restored session becomes an ordinary one. The list leads with the session's own title, the footer states the caps and the total, and both irreversible buttons ask twice with an explicit cancel.
   - 已知边界 / known limit：`trash/<条目>/meta.json` 是用户目录里的普通文件。手改其中的 `bytes` 可以绕过体积上限——列表刻意读这个缓存值（不每次递归走盘，8000 个文件时这是 531ms 与 25ms 的差别），要发现「被改过」就得重新走一遍盘，正好抵消掉这个优化。属于自担风险。`bytes` in `meta.json` is trusted as a cache on purpose; hand-editing it is the owner's own risk.
+- **生命周期一页管完 / Manage the lifecycle in one place（0.8.4–0.8.5）** — 详情页新增「当前临时会话」区：列出此刻所有临时会话（标题取自会话缓存，取不到显示 ID），每条都能「保留为正式会话 / 立即删除」，与侧栏右键菜单同一批动作、同一批后端路由；「全部保留」一键把整个列表转正（单次写盘）。清理策略区同时显示「上次清理」结果与「下次定时清理」时间——以前它们只出现在反馈报告里。An "Active temporary sessions" section lists every temp session with keep/delete actions shared with the row menu, a Keep-all button promotes the whole list in one store write, and the policy card shows the last cleanup result and the next scheduled run — facts that previously only reached the feedback report.
 - **反馈有确定入口 / Feedback that reaches someone** — 详情页底部三个按钮：复制报告（自动带上版本、系统、布局、最近错误；0.7.5 起末尾附 Discussions 与 issue 地址）、预填的 GitHub Issue、插件市场规定的评论区。Three channels at the bottom of this page, with version, OS, layout and last error already filled in; since 0.7.5 the copied report also ends with the Discussions and issue addresses.
 - **不联网 / Offline** — 收款码随插件打包由宿主本地提供，配置只落在本机 profile。The QR ships with the bundle and is served locally; config stays in your profile.
 - **中英双语 / Bilingual** — 界面文案、详情内容、设置说明全部中英对照。UI labels, this document and the settings copy are all bilingual.
@@ -201,6 +202,19 @@ For local development, point the same command at this folder or a packed `.tgz`.
 菜单本身：`role="menu"` + `role="menuitem"`，首项自动获得焦点；方向键在两项间循环，`Esc` 关闭并把焦点还给那一行，点外部 / `scroll` / `resize` 都会关闭（菜单是 `position:fixed`，不关就会飘在错误的行旁边）。视口边缘翻转用 `getBoundingClientRect()` 实测，读不到时退回 `offsetWidth`/`offsetHeight` 与保守的 220×96。
 
 Plain English: right-clicking a temporary row opens a two-item menu. "Keep" simply calls the untrack route that has existed since 0.2.0; "Delete now" goes through a new single-id route that refuses anything outside the tracked set before touching the filesystem, hides the row when a file is locked, and keeps the id tracked so the next launch retries. The menu never touches rows this plugin does not own.
+
+**详情页管理当前临时会话（0.8.4–0.8.5）**
+
+0.4.0 的管理入口只有侧栏右键，而「最近删除」反而有整页界面——生命周期缺了「现在」这一页。0.8.4 起详情页新增「当前临时会话」区，0.8.5 补上批量动作与可见性：
+
+- **列表**：`GET /api/dsh-temp-session.list?titles=1` 可选返回每条的标题（与回收站同一来源：宿主会话投影缓存，取不到退回 id）和 `maxKept`；侧栏自己的轮询**不带参**，仍是零开销的 `{ok, ids, count}`，旧宿主没有 titles 支持时页面退回纯 id 行。
+- **单条动作**：「保留为正式会话」走既有 `untrack`，「立即删除」走既有 `remove`（进本机回收站），删除沿用回收站的「点两次确认」；两个入口共用 `tempMenuActions()` 单点定义，行为永不分叉。动作后页面的列表、侧栏徽标、宿主会话列表同步刷新。
+- **批量动作（0.8.5）**：「全部保留」调用新增的 `POST /api/dsh-temp-session.keep-all`（第 14 条路由）——**一次 store 写入**代替 N 次逐条 untrack（在 OneDrive 目录上每次原子替换都肉眼可见）；目录不动，保留 ≠ 删除；空列表时按钮退场，重复调用是幂等 no-op。健康自检的必需路由清单同步为 14 条。
+- **页面活性**：详情页以 ids-only 轮询侦测集合变化，变了才重读标题；在侧栏新建/删除临时会话，页面几秒内跟上。
+- **清理信息可见（0.8.5）**：策略区显示「上次清理 · removed+zombies/tried · 原因 @ 时间」与「下次定时清理 · 时间」（字段一直躺在 status 里，此前只进反馈报告）；点「立即清理」后该行立即采纳本次报告，改定时设置后 POST 响应自带新的 scheduler 状态，同样即时。
+- **临时按钮悬停计数（0.8.4）**：「临时」按钮 tooltip 末尾带当前数量（`· N active / N 个临时会话`），来自 status/列表，未知时不追加；保留/创建后随下一帧刷新。
+
+Plain English: the detail page gains an active-temp-session section — titles via the opt-in `?titles=1` list shape (bare ids/count unchanged for the sidebar), keep/delete sharing the row menu's routes, a Keep-all route that promotes everything in one store write, the live count in the Temp button's tooltip, and the policy card finally showing the last cleanup result and the next scheduled run.
 
 **限制 / Limits**
 

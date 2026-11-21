@@ -24,7 +24,7 @@ The full detail document is [DETAIL.md](DETAIL.md).
 
 | 设计取向 / Design goal | 落在哪 / What it means |
 | --- | --- |
-| **强实用性 / Seriously practical** | 三种布局（含官方默认）一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且**默认在退出 DSH 时删除**（`DELETE_ON_EXIT=on`；0.8.0 起数据先移进本机回收站，默认留 7 天可恢复；**每天定时清理默认关**，需要时在详情页开启并设时间）、**临时会话可右键「保留为正式会话」或「立即删除」**（0.4.0）、详情页三种反馈入口 |
+| **强实用性 / Seriously practical** | 三种布局（含官方默认）一键切换、默认布局在详情页顶部直接改、会话列表默认全展开（不用再点「展开其余」）、「临时」开真会话且**默认在退出 DSH 时删除**（`DELETE_ON_EXIT=on`；0.8.0 起数据先移进本机回收站，默认留 7 天可恢复；**每天定时清理默认关**，需要时在详情页开启并设时间）、**临时会话可右键「保留为正式会话」或「立即删除」**（0.4.0）、**详情页可直接管理当前临时会话**（保留 / 全部保留，0.8.4–0.8.5）、详情页三种反馈入口 |
 | **美观性 / Looks native** | 颜色与层级全取宿主设计变量、深浅主题自动跟随；细字号控制栏、迷你布局示意图、「临时」用 CSS 标签不破坏行高；不重构宿主 DOM、不弹窗、不另起一套皮肤 |
 
 完整的「强实用性 / 美观性」逐条说明见 [DETAIL.md](DETAIL.md) 的「这是一款什么插件」一节。
@@ -238,6 +238,23 @@ DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成�
 
 > 「删不掉」时不会假装成功：文件被别的进程占用时，先把这行从列表里隐藏，并提示「下次启动再删」，而不是留一个点不开的幽灵会话。
 > If a file is locked, the row is hidden and retried next launch instead of pretending the delete worked.
+
+### 详情页管理当前临时会话（0.8.4 / 0.8.5）
+
+侧栏右键之外，**插件详情页现在也能管住「现在」**——新增「当前临时会话」区：
+
+- **列表**：此刻的每个临时会话一行，标题优先（来自会话缓存，取不到显示 ID）；
+- **单条动作**：「保留为正式会话」「立即删除」和右键菜单是同一批动作、同一条后端路由，删除同样先进回收站、同样要点两次确认；
+- **全部保留（0.8.5）**：一枚按钮把整个列表一次性转正——比逐个右键快，也比「关掉退出删除」温和（关掉开关会让**以后所有**临时会话都变成永久，这只影响现在这一批）；
+- **页脚**：「共 N 条 · 上限 M」，一眼看出离 `MAX_KEPT` 还有多少余量；
+- **清理信息（0.8.5）**：下面「临时会话自动删除」卡里新增两行——「上次清理：N/M · 原因 @ 时间」和「下次定时清理：时间」；点「立即清理临时会话」后结果立刻显示，不用刷新页面。
+
+顺手的两个小改动（0.8.4）：**「临时」按钮悬停会显示当前数量**（`· N active / N 个临时会话`）；**选项区底部的配置文件路径可以一键复制**（点击即复制并提示，不用再手动圈选一段换行的长路径）。
+
+> 管理入口现在有三层，按需取用：侧栏右键（就地、单条）→ 详情页「当前临时会话」区（集中、批量）→ 「最近删除」（后悔药）。
+> Three layers of control: the row menu (in place, one at a time), the detail-page section (central, bulk), and the trash (undo).
+
+English: the detail page now manages the live list too — per-row keep/delete sharing the row menu's routes, a Keep-all button that promotes the whole list in one store write, the last-cleanup result and next scheduled run shown on the policy card, the Temp button's tooltip carrying the live count, and a copyable config-file path.
 
 ### 它是怎么被删掉的（说清楚，不夸大）
 
