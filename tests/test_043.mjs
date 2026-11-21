@@ -108,6 +108,23 @@ async function main() {
     CLIENT_SRC.includes("toast(t('policy.failed')"))
   check('setField: the silent catch is gone',
     !CLIENT_SRC.includes("result.catch(function () {})"))
+  // 0.8.6 — the real host refuses a write whose expectedRevision was read
+  // before an earlier write in the same controller queue landed, and the
+  // client-side mutate() only answers boolean, so the toast showed a bare
+  // config key ("保存失败: tab"). The revision now resolves inside the host
+  // controller's serialized queue, one retry absorbs the residual race, and
+  // the toast names the control.
+  check('setField: the revision is resolved by the host write queue',
+    !CLIENT_SRC.includes('config.controller.mutate(ops, revision)') &&
+    !CLIENT_SRC.includes('snapshot && snapshot.revision'))
+  check('setField: one in-place retry absorbs a lost revision race',
+    CLIENT_SRC.includes('function retryOrFail()') && CLIENT_SRC.includes('setTimeout(attempt, 400)') &&
+    CLIENT_SRC.includes('if (attempts >= 2)'))
+  check('setField: the refusal toast names the control',
+    CLIENT_SRC.includes('function fieldLabel(field)') &&
+    CLIENT_SRC.includes('fieldLabel(field)') && CLIENT_SRC.includes("'policy.conflictHint'"))
+  check('writeDefaultMode: same no-preread contract',
+    /controller\.mutate\(\[\{ op: 'set', path: \['mode'\], value: mode \}\]\)/.test(CLIENT_SRC))
 
   // ---- 3. guard source stays honest ---------------------------------------
   check('source: schedulerCtx is part of host state', HOST_SRC.includes('schedulerCtx: null'))

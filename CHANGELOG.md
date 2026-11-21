@@ -1,10 +1,24 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
+
+---
+
+## 0.8.6 — 真机修复：布局/页签写入不再「保存失败： tab」（2026-11-21）
+
+真机（DSH 0.2.2-rc.5）点击「显示工作区 / 显示扩展」偶发红色 toast「**保存失败： tab**」。逐层追到宿主源码后的结论与修复：
+
+- **根因在插件客户端，不在宿主**。写入链路是 `setField('tab')` → `configForms` 控制器 `mutate(ops, expectedRevision)` → 宿主 Remote `settings.mutate` → `@deepseek-ai/dsh-settings` 的 `write()`。旧代码在点击时**先读快照 revision 再显式传入**，而宿主自己的 `setField()` 合同是 **expectedRevision 可省略**——控制器会在**串行写队列内部**解析最新 revision（`expectedRevision ?? pendingRevision ?? snapshot`）。预读的 revision 一旦落在队列里前一个写入之后（比如上一次点击刚成功、宿主已把 revision +1），Host 就按 `SETTINGS_CONFLICT` 拒绝；真机时间线吻合：profile patch 里 `tab` 已是上一次成功写入的值，紧接着的下一次写入被拒。
+- **宿主客户端层把拒绝原因丢掉了**（`mutate` 只返回 boolean，`SETTINGS_CONFLICT` 的 "expected/actual" 到不了调用方），所以 toast 只能显示裸字段名 "tab"。修复后 toast 说人话：「保存失败：扩展/工作区切换 · 宿主拒绝了这次写入（常见原因是保存时机冲突）……」，并新增 `field.tab` / `field.mode` / `policy.conflictHint` 双语词条。
+- **写入不再预读 revision**（`setField` 与详情页 `writeDefaultMode` 同步修改）：revision 由宿主写队列解析，排队写在彼此之后不再互相踩踏。
+- **失败自动原地重试一次**：`false` 返回已经触发宿主侧 `recover()` 重读，400ms 后的第二次写入落在新鲜 revision 上；只有**第二次**仍被拒才回滚 + toast。重试窗口内不回滚、不弹错，避免「看起来保存失败但实际马上成功」的错觉。
+- 回滚与诚实语义不变：第二次仍失败时值回滚、toast 说明「值已回滚，稍等一拍再点通常就能成功」。
+- 宿主侧行为核对（`dsh-client-ui-settings/src/client/config-form.ts`、`dsh-api-settings-controller/lib/index.js`、`dsh-settings/lib/index.js`）：`mutate` 的 false 只来自 Host 拒绝或控制器销毁；`SETTINGS_CONFLICT` 是唯一与我们预读 revision 相关的拒绝类。`volatile` 校验、路径校验与 patch 落盘逻辑均未改动。
+- 回归：`tests/test_043.mjs` 新增 4 条源码守卫（revision 不再预读、重试存在、toast 带控件名、`writeDefaultMode` 同合同）。`npm test` 全绿、`npm run check` 通过。
 
 ---
 
