@@ -106,6 +106,9 @@ The toolbar is one segmented control: the three mutually exclusive layouts share
 `换布局 / Cycle` 默认不出现，可用 `showQuickSwitch: true` 打开；它和其余动作按钮一起走同一套图标。
 `Cycle` stays hidden unless `showQuickSwitch: true`; it uses the same icon set as the other action buttons.
 
+0.8.3 起，侧栏折叠成 56px 图标条（浏览器版 / macOS 版）时会保留**一枚**菜单按钮，把被宽度挤掉的操作接回来：控制栏整条收起，菜单里是三种布局 + 新建临时会话。选完面板立即关闭；侧栏展开时（≥100px）这枚按钮不出现，所以宽栏不会多一套重复入口。**Windows 桌面版折叠后侧栏宽度是 0（宿主不保留图标条），这枚菜单不会出现**，标题栏上的按钮仍是展开/收起入口；展开后的宽度由宿主决定，可拖 264–420px，这一段由 `data-dsbs-narrow` 负责图标/文字切换。100–170px 只在浏览器抽屉式侧栏（窗口约 150–220px）里可能出现，此时菜单只放「新建临时会话」，不与仍在的控制栏重复。插件页签占列时它也隐藏，页签条仍是唯一退出口。
+Since 0.8.3, a collapsed 56px icon rail (browser and macOS builds) keeps **one** menu button that takes over whatever the width pushed out: the toolbar is gone, so the panel offers the three layouts plus the temporary session. The panel closes as soon as you pick; an expanded column (≥100px) never shows this button, so no duplicate control appears. **The Windows desktop build collapses the sidebar to 0px — the host keeps no icon rail, so this menu does not appear there**; the caption-row toggle remains the open/close entry. Expanded width is host-owned and draggable from 264 to 420px, where `data-dsbs-narrow` switches between icons and labels. The 100–170px band only occurs in the browser drawer (window roughly 150–220px wide); there the panel carries the temp action alone rather than repeating the toolbar.
+
 ## 第三方插件接入：注册自己的页签 / Third-party tabs（0.3.0）
 
 别的插件可以往侧栏注册一页自己的界面。客户端会拿到一个 `sidebarSuite` 服务：

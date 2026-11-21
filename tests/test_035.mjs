@@ -105,6 +105,10 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 function tagOf(el) {
   if (el.hasAttribute('data-dsbs-bar')) return 'bar'
   if (el.hasAttribute('data-dsbs-tabs')) return 'tabs'
+  // 0.8.3: the rail-only menu is a third injected header node. It must stay
+  // AFTER the strip and BEFORE the scrolling viewport, so the original bar /
+  // strip / grid contract is still visible in this assertion.
+  if (el.hasAttribute('data-dsbs-rail-menu')) return 'rail'
   if (el.hasAttribute('data-dsbs-tabpanel')) return 'panel'
   if (el.className && /scrollArea/.test(el.className)) return 'grid'
   if (el.className && /scrollRegion/.test(el.className)) return 'host'
@@ -164,8 +168,8 @@ async function main() {
   const panel = doc.querySelector('[data-dsbs-tabpanel]')
   check('expanded: tab strip also lives outside the grid',
     !!strip && strip.parentNode === scrollRegion && strip.parentNode !== root)
-  check('expanded: header order is bar, tabs, then the grid viewport',
-    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
+  check('expanded: header order is bar, tabs, rail, then the grid viewport',
+    /^bar,tabs,rail,grid/.test(tags(scrollRegion)), tags(scrollRegion))
   check('expanded: a consumer page stays inside the grid viewport',
     !!panel && panel.parentNode === root, tags(root))
 
@@ -191,7 +195,7 @@ async function main() {
   check('folded: only one control bar survives',
     doc.querySelectorAll('[data-dsbs-bar]').length === 1)
   check('folded: header order is unchanged',
-    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
+    /^bar,tabs,rail,grid/.test(tags(scrollRegion)), tags(scrollRegion))
   check('folded: host wrapper stays inside the grid, below the header',
     wrapper.parentNode === root, tags(root))
 
@@ -215,7 +219,7 @@ async function main() {
     scrollRegion.children.length === beforeCount,
     beforeCount + ' -> ' + scrollRegion.children.length)
   check('20 repaints leave the header in the same order',
-    /^bar,tabs,grid/.test(tags(scrollRegion)), tags(scrollRegion))
+    /^bar,tabs,rail,grid/.test(tags(scrollRegion)), tags(scrollRegion))
 
   console.log('')
   console.log(pass + ' passed, ' + fail + ' failed')
