@@ -118,8 +118,10 @@ async function main() {
     !CLIENT_SRC.includes('config.controller.mutate(ops, revision)') &&
     !CLIENT_SRC.includes('snapshot && snapshot.revision'))
   check('setField: one in-place retry absorbs a lost revision race',
-    CLIENT_SRC.includes('function retryOrFail()') && CLIENT_SRC.includes('setTimeout(attempt, 400)') &&
-    CLIENT_SRC.includes('if (attempts >= 2)'))
+    CLIENT_SRC.includes('function retryOrFail()') &&
+    CLIENT_SRC.includes('setTimeout(function () {') && CLIENT_SRC.includes('}, 400)') &&
+    CLIENT_SRC.includes('if (attempts >= 2)') &&
+    CLIENT_SRC.includes('if (!runtime.disposed) attempt()'))
   check('setField: the refusal toast names the control',
     CLIENT_SRC.includes('function fieldLabel(field)') &&
     CLIENT_SRC.includes('fieldLabel(field)') && CLIENT_SRC.includes("'policy.conflictHint'"))

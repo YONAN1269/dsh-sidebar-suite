@@ -234,6 +234,8 @@ Plain English: the Temp button now creates a real DSH session (sidebar entry, na
 ## 宿主兼容与契约表 / Host compatibility & contracts（0.7.4）
 
 > **维护者须知 / For maintainers**：本插件靠嗅探 DSH 侧栏的类名后缀和插槽来定位节点，不硬编码 CSS-module 哈希。DSH 每次改侧栏结构，按这张表逐项核对即可 —— 这是宿主假设的**唯一集中记录**，源码里的对应点都带 `rc.2` / `rc.3` 注释。改版时先搜这里的关键词。
+>
+> **宿主版本要求 / Requirement**：`package.json` 的 `engines.dsh = ">=0.2.2-rc.1 <0.3.0-0"`（0.8.6 起声明）。宿主 v0.2.1-alpha.3 起在**安装与 profile 启动时强制校验**该字段，缺省才回退 peer 规则；区间用带预发布比较器的写法，用宿主自带 semver 实测：0.2.2-rc.1→rc.5、0.2.2-rc.6、0.2.2、0.2.3 匹配；0.2.1 及更早、0.2.3-rc.1、0.3.0（含其预发布）拒绝。已验证 = rc.1–rc.5 契约矩阵 + rc.5 真机；**放宽区间必须与契约矩阵新增画像同步**，不要只改数字。The range is enforced by the host at install/boot; widen it only together with a new contract-matrix profile.
 
 | 依赖的宿主约定 / Contract | 用在源码哪里 / Where | 对应 DSH 版本 | 改版时怎么找 / On host change |
 | --- | --- | --- | --- |

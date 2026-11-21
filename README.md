@@ -180,8 +180,8 @@ Every release ships a `.zip` source archive and an npm `.tgz`; point the install
 
 **已在 DSH 0.2.2-rc.5（desktop profile）验证 / Verified on DSH 0.2.2-rc.5 (desktop profile).**
 2026-11-19 本机（`D:\program\harness`）完成三件事：`npm test` 全绿、可重复的 rc.1 / rc.2 / rc.3 / rc.5 宿主契约矩阵、L5 冒烟（安装 / 启动 / HTTP 探测 3/3）。rc.5 把宿主源码从 `app.asar` 解包到 `resources/app`，但 `DSH_CLIENT_VERSION` 注入、侧栏节点、官方插槽、`contextMenus` 与 `remote.session.openWorkspacePath` 调用链均无变化。更早的 2026-11-12 rc.3 CDP 复核结论仍有效：服务发布、`[data-slot="sidebar.workspaces"]` 与 `nav.wtg9ga_panelList` 解析、控制栏 / 页签条 /「临时」按钮注入、第三方 tab 注册与懒挂载、Host 配置路由返回 200、root 子节点顺序稳定 —— DOM 契约未变。rc.2 起侧栏根节点从纵向 flex 改成 CSS Grid（三列 `4px 264px 6px`、四行，宿主面板钉在 `grid-row:2` 与 `grid-row:4`）；**0.4.1** 让注入节点 `grid-column:1/-1` 独占整行（修好按钮压住「工作区」标题），**0.5.0** 进一步把控制栏 / 页签条移出 grid、放进父级 `scrollRegion` flex 列；rc.3 起「新会话」行新增官方插槽 `sidebar.session.action`（0.6.0 起优先使用，旧宿主自动回退）。Verified on a live rc.5 desktop install: full test suite, repeatable host-contract matrix and L5 smoke all pass; the rc.5 unpacked `resources/app` layout changed no sidebar/menu/Remote contract the plugin consumes.
-本包刻意不声明 `engines.dsh`：当前 DSH 是预发布版，semver 默认规则会把常规版本范围误判为不兼容。
-This bundle deliberately omits `engines.dsh`: DSH is currently a prerelease, and semver's default rules would reject any ordinary range.
+**宿主版本要求 / Host version requirement**：`engines.dsh = ">=0.2.2-rc.1 <0.3.0-0"`（0.8.6 起声明；宿主 v0.2.1-alpha.3 起在安装与 profile 启动时**强制校验**该字段）。已验证范围：DSH **0.2.2-rc.1 → rc.5**（可重复契约矩阵）与本机 rc.5 真机；0.2.2 系后续预发布与 0.2.x 正式版按区间放行但未逐版本验证；**0.2.1 及更早、0.2.3 的预发布、0.3.0 一律拒绝**——宿主升级后若安装/启动提示不兼容，等插件放宽区间即可，不要强装。
+用带预发布比较器的区间（而不是普通 `>=0.2.2`）是刻意的：semver 默认规则不把预发布版本算进普通范围，实测（宿主自带 semver）这个写法能精确匹配 rc 预发布，又挡住未验证的未来版本。The range uses prerelease comparators on purpose: semver excludes prereleases from ordinary ranges, and this form matches the verified rc line while still refusing unverified future versions.
 
 组合包 patch 会自动挂载，**不要**再往 profile 的 `cordis.patch.yml` 加同名行，否则加载两次。
 The bundle patch mounts the plugin; do not also add a manual mount line.

@@ -18,6 +18,7 @@
 - **失败自动原地重试一次**：`false` 返回已经触发宿主侧 `recover()` 重读，400ms 后的第二次写入落在新鲜 revision 上；只有**第二次**仍被拒才回滚 + toast。重试窗口内不回滚、不弹错，避免「看起来保存失败但实际马上成功」的错觉。
 - 回滚与诚实语义不变：第二次仍失败时值回滚、toast 说明「值已回滚，稍等一拍再点通常就能成功」。
 - 宿主侧行为核对（`dsh-client-ui-settings/src/client/config-form.ts`、`dsh-api-settings-controller/lib/index.js`、`dsh-settings/lib/index.js`）：`mutate` 的 false 只来自 Host 拒绝或控制器销毁；`SETTINGS_CONFLICT` 是唯一与我们预读 revision 相关的拒绝类。`volatile` 校验、路径校验与 patch 落盘逻辑均未改动。
+- **声明宿主版本要求**：`package.json` 新增 `engines: { node: ">=20", dsh: ">=0.2.2-rc.1 <0.3.0-0" }`。核实过宿主 v0.2.1-alpha.3 起 `engines.dsh` 是安装与 profile 启动的**强制**兼容检查（缺省才回退 peer 规则）；区间用带预发布比较器的写法，宿主自带 semver 实测：0.2.2-rc.1→rc.5、0.2.2-rc.6、0.2.2、0.2.3 匹配，0.2.1 及更早、0.2.3-rc.1、0.3.0（含预发布）拒绝——精确覆盖已验证范围并挡住未验证的未来版本。README/DETAIL/使用说明同步声明，并撤掉「刻意不声明 `engines.dsh`」的过时说法（当时的顾虑——普通范围误判预发布——用预发布比较器即可正确表达；生态内 session-guard / mnemon / context 均已如此声明）。
 - 回归：`tests/test_043.mjs` 新增 4 条源码守卫（revision 不再预读、重试存在、toast 带控件名、`writeDefaultMode` 同合同）。`npm test` 全绿、`npm run check` 通过。
 
 ---
