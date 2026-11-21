@@ -41,7 +41,7 @@ function findAll(node, pred, out) {
 const STATUS_OK = JSON.stringify({
   ok: true,
   env: { plugin: '0.7.3', dshClient: '0.2.2-rc.5', node: '24.9.0', platform: 'win32' },
-  routes: { registered: 13, errors: [], paths: ['/api/dsh-temp-session.status', '/api/dsh-temp-session.list', '/api/dsh-temp-session.config', '/api/dsh-temp-session.track', '/api/dsh-temp-session.untrack', '/api/dsh-temp-session.remove', '/api/dsh-temp-session.purge', '/api/dsh-temp-session.probe', '/api/dsh-temp-session.paths', '/api/dsh-temp-session.trash', '/api/dsh-temp-session.trash-restore', '/api/dsh-temp-session.trash-delete', '/api/dsh-temp-session.trash-empty'] },
+  routes: { registered: 14, errors: [], paths: ['/api/dsh-temp-session.status', '/api/dsh-temp-session.list', '/api/dsh-temp-session.config', '/api/dsh-temp-session.track', '/api/dsh-temp-session.untrack', '/api/dsh-temp-session.keep-all', '/api/dsh-temp-session.remove', '/api/dsh-temp-session.purge', '/api/dsh-temp-session.probe', '/api/dsh-temp-session.paths', '/api/dsh-temp-session.trash', '/api/dsh-temp-session.trash-restore', '/api/dsh-temp-session.trash-delete', '/api/dsh-temp-session.trash-empty'] },
   tempCount: 2,
 })
 

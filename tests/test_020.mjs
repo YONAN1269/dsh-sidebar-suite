@@ -49,10 +49,10 @@ const host = createTempSessionHost(hostCtx)
 host.register(hostCtx)
 
 // 0.8.0: nine session routes + four trash routes (list / restore / delete / empty).
-check('host: 13 routes registered', host.state.routes.registered === 13, host.state.routes)
+check('host: 14 routes registered', host.state.routes.registered === 14, host.state.routes)
 check('host: no route errors', host.state.routes.errors.length === 0, host.state.routes.errors)
 host.register(hostCtx)
-check('host: re-register keeps 13 routes (idempotent)', host.state.routes.registered === 13, host.state.routes.registered)
+check('host: re-register keeps 14 routes (idempotent)', host.state.routes.registered === 14, host.state.routes.registered)
 check('host: trash routes are mounted', ['trash', 'trash-restore', 'trash-delete', 'trash-empty'].every(function (name) {
   return host.state.routes.paths.includes('/api/dsh-temp-session.' + name)
 }), host.state.routes.paths)
@@ -87,6 +87,22 @@ seedSession(ID2)
 await call('/api/dsh-temp-session.track?sessionId=' + ID2, { method: 'POST' })
 await call('/api/dsh-temp-session.untrack?sessionId=' + ID2, { method: 'POST' })
 check('host: untrack forgets without deleting', (await call('/api/dsh-temp-session.list')).count === 0 && fs.existsSync(path.join(HOME, 'sessions', '--proj--', ID2)))
+
+// 0.8.5: keep-all promotes the whole list in ONE store write; the session
+// directories must be untouched (keep ≠ delete) and an empty call is a no-op.
+const ID2B = '22422222-2222-2222-2222-222222222222'
+seedSession(ID2B)
+await call('/api/dsh-temp-session.track?sessionId=' + ID2, { method: 'POST' })
+await call('/api/dsh-temp-session.track?sessionId=' + ID2B, { method: 'POST' })
+const keptAll = await call('/api/dsh-temp-session.keep-all', { method: 'POST' })
+check('host: keep-all promotes every tracked id', keptAll.ok === true && keptAll.kept === 2, keptAll)
+check('host: keep-all empties the store but not the disk',
+  (await call('/api/dsh-temp-session.list')).count === 0 &&
+  fs.existsSync(path.join(HOME, 'sessions', '--proj--', ID2)) &&
+  fs.existsSync(path.join(HOME, 'sessions', '--proj--', ID2B)))
+const keptAllAgain = await call('/api/dsh-temp-session.keep-all', { method: 'POST' })
+check('host: keep-all on an empty list is an idempotent no-op',
+  keptAllAgain.ok === true && keptAllAgain.kept === 0, keptAllAgain)
 
 const probe = await call('/api/dsh-temp-session.probe')
 check('host: probe declares native-window mode', probe.mode === 'native-session' && probe.usesNativeWindow === true && probe.createsOwnWindow === false, probe.mode)
