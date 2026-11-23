@@ -225,6 +225,7 @@ Plain English: the detail page gains an active-temp-session section — titles v
 - CHAT 官网模式下临时按钮默认隐藏（那条链路是 DeepSeek 网页账号，和 DSH 会话不是一回事）；`TEMP_IN_CHAT_MODE=show` 可强显，`TEMP_BUTTON_STYLE=own` 可完全避开与侧栏顶部控件的抢位。
 - 右键菜单只作用于**临时会话行**。若另一个插件也接管了这些行的右键，把 `TEMP_ROW_MENU` 改成 `off` 让出位置（详情页有同一个开关）。
 - 菜单动作是异步的：删除/保留/清理/恢复成功后，插件会主动调用 `uiWorkspace().sessions.reload/refresh/reloadSessions/invalidate` 让宿主重读列表；宿主没有这些 API 时也不会卡住，插件会同步摘掉自己的临时行标记，行在宿主下次刷新列表时消失。
+- **新建时沿用当前会话的 Agent 预设（0.8.9）**。宿主在建会话之前先解析预设：显式传入的优先，否则用 `agent-preset-registry` 的 `selectedDefault`。那个默认值只是 profile 里一行字符串，提供该预设的插件被卸载后它**不会**消失 —— 于是该 profile 下所有新建会话都会 `agent-preset/not-found`（宿主自己的「新会话」按钮同样失败）。现在新建临时会话会读主栏当前会话的 `byId[id].projectionValues.agentPreset` 并显式传入，读不到（没有当前会话 / 没有该字段 / 不是字符串）才退回 `{ workspaceId }`；真拿不到任何可用预设时，提示会点名那个失效的预设、说明这是宿主侧配置问题，并给出两条出路。
 
 **侧栏顶部按钮的 DOM 约束（0.2.1）**：`dsh-deepseek-chat` 的侧栏适配器（`lib/client.js` 里的 `attachSidebarAdapter`）会从 `sidebar.brand.name` 插槽往上走五层，然后要求侧栏根节点下 `<button>` 子元素**恰好 1 个**（`controls()` 里的 `buttons.length === 1 && buttons[0] === row.nextElementSibling`）。0.2.0 把「临时」按钮作为根节点的第 2 个 `<button>` 插进去，适配器直接 `return null`，于是它在切换器下渲染「当前侧栏不兼容：顶部新会话仍使用 HARNESS」并且不再接管「新会话」。0.2.1 把按钮装进 `[data-dsbs-temp-slot]`（`<div>`），根节点的 `<button>` 计数回到 1，适配器恢复。回归测试见 `_probe/chat-compat.mjs`：它从插件 bundle 里抽出真实的 `attachSidebarAdapter` 跑一遍假 DOM。
 

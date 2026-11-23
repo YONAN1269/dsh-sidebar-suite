@@ -65,6 +65,26 @@ check('css: own mode lets the host row wrap',
 check('css: own mode gives the seat the whole second line',
   SRC.includes('html[data-dsbs-temp-mode="slot"][data-dsbs-temp-style="own"] [data-dsbs-temp-slot]{flex:0 0 100%'))
 
+// ---- the host's Ctrl+N chip is dropped wherever our button shares the row --
+// The host hides that chip with `opacity:0` and slides it in on hover/focus,
+// fading the label under a `:has(+.newSessionShortcut)` mask to make room. With
+// the 80px seat beside the button the chip lands on the seam between the two
+// controls, so a hover paints "Ctrl + N" as if it belonged to the Temp button.
+// 0.8.9 hides the chip in seat mode — and has to undo the fade too, because
+// `display:none` leaves the `:has()` match true and the label would end in a
+// 16px gradient with nothing revealed behind it.
+const chipRules = cssLines.filter((line) => line.includes('newSessionShortcut"]{display:none!important}'))
+check('css: both mounting modes hide the host shortcut chip', chipRules.length === 2,
+  chipRules.map((line) => (line.includes('temp-mode="dom"') ? 'dom' : line.includes('temp-mode="slot"') ? 'slot' : '?')))
+check('css: the seat-mode chip rule is slot-scoped and spares chat mode',
+  chipRules.some((line) => line.includes('html[data-dsbs-temp-mode="slot"]:not([data-dsbs-chat-mode])') &&
+    line.includes('button[class*="newSession"] > span[class*="newSessionShortcut"]')))
+const maskRules = cssLines.filter((line) => line.includes('newSessionLabelMask"]{overflow:visible!important;mask-image:none!important}'))
+check('css: the label fade is undone on both hover and keyboard focus', maskRules.length === 2,
+  maskRules.map((line) => (line.includes(':hover ') ? 'hover' : line.includes(':focus-visible ') ? 'focus' : '?')))
+check('css: the fade is only undone where the chip is hidden (slot mode)',
+  maskRules.every((line) => line.includes('html[data-dsbs-temp-mode="slot"]:not([data-dsbs-chat-mode])')))
+
 // ---- the setting flag carries the value the CSS reads --------------------
 // 0.5.x wrote a boolean ("true"), so `[data-dsbs-temp-style="own"]` never
 // matched and TEMP_BUTTON_STYLE=own silently did nothing.
