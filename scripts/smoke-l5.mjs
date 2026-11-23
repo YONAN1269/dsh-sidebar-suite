@@ -89,9 +89,10 @@ function isReachable(cliJs) {
 }
 
 // The host has shipped both layouts: rc.5 unpacked its sources into a real
-// resources/app/... tree, and 0.2.3-alpha.2 moved them back inside
-// resources/app.asar. Accept both so the smoke check keeps working on whatever
-// version is installed.
+// resources/app/... tree, and 0.2.3-alpha.2's installer carries
+// resources/app.asar — which the desktop updater then unpacks into
+// resources/app/ again on first launch. Both forms occur for 0.2.3, so accept
+// both and let the run work on whatever is installed.
 function desktopCliFromBase(baseDir) {
   const rel = 'dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js'
   const candidates = [
@@ -226,6 +227,27 @@ console.log(`临时 DSH_HOME: ${home}\n`)
 
 let exitCode = 0
 
+/**
+ * Recognise a host-side failure that has nothing to do with this plugin: on an
+ * unpacked desktop install (`resources/app/`), `dsh-desktop-host/lib/cli.js`
+ * resolves its runtime as `<dirname(app)>/runtime`, i.e. `resources/app/runtime`,
+ * while the real payload sits at `resources/runtime`. `dsh plugin ...` then
+ * spawns a pnpm.mjs that does not exist and dies with MODULE_NOT_FOUND before
+ * the package is even looked at.
+ * @param out - the install command's combined output.
+ * @returns an explanation to print above the raw tail, or '' when it does not apply.
+ */
+function hostCliRuntimeHint(out) {
+  if (!/MODULE_NOT_FOUND/u.test(out)) return ''
+  if (!/app[\\/]runtime[\\/]primary-runtime/u.test(out)) return ''
+  return [
+    '这不是本插件的问题：DSH 的 `dsh plugin` CLI 在解包布局下把 runtime 算成 resources/app/runtime，',
+    '而实际位置是 resources/runtime（宿主 0.2.3-alpha.2 的解包更新会形成这种布局）。',
+    '绕过方式：用桌面端「插件 → 添加插件」安装（主进程会显式传正确的 runtime 路径），',
+    '或把 --cli 指向一个 resources/app.asar 布局的安装。',
+  ].join('\n')
+}
+
 // L5.1 安装
 {
   const args = [...launcher.prefix, 'plugin', '--profile', 'web', 'add', spec]
@@ -236,11 +258,13 @@ let exitCode = 0
   } else {
     const log = latestPnpmLog(profileDir)
     const detail = r.code === 'timeout' ? `超时 ${opts.installTimeout}s` : `退出码 ${r.code}`
+    const hint = hostCliRuntimeHint(r.out)
     const extra = [
+      hint ? `[宿主问题] ${hint}` : '',
       tail(r.out),
       log ? `pnpm 日志: ${log}` : '',
     ].filter(Boolean).join('\n')
-    record('1/3', 'L5.1 沙盒安装', false, `(${since()})`, extra)
+    record('1/3', 'L5.1 沙盒安装', false, `(${since()})${hint ? '  ← 宿主 CLI 路径问题' : ''}`, extra)
     exitCode = 1
   }
 }

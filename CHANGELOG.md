@@ -1,12 +1,25 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`、`0.8.8`）。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
+
+## 0.8.8 — 两轮审阅：更正两处失真的文档，把宿主 CLI 的坑写清楚（2026-11-23）
+
+这一版**没有功能改动**（`lib/client.js` 只动了版本号）。两轮审阅把 0.8.7 的每条新路径都对回了宿主源码、又在已安装的 0.2.3-alpha.2 上实点了一遍，结论是功能没问题；要修的是三处「说的和做的不一样」。
+
+- **第一轮（逐行 + 契约复核）**：`nativeMenus` / `nativeMenuActive` / `openNativeTempMenu` / `onTempContextMenu` 的三条分支 / `mountTempRowMenu` 双模式挂载 / `createTempSession` 的计数刷新，逐条对照 `dsh-client-ui-context-menu` 源码确认：`open()` 内部同步调 `registry.resolve()`、`resolve` 收到的是 `target.value`（所以 `target.sessionId` 的写法是对的）、`active` 与 `targetSource` 成对清空（不存在读到陈旧非空值的窗口）、宿主的 `document` 级 `contextmenu` 监听器先于我们注册、且会先 `close()` 一次（所以我们读到 `active === null` 再自己开，语义正确）。**未发现功能缺陷。**
+- **第二轮（真机实点）**：在**已安装的** 0.2.3-alpha.2（`D:\program\harness`，更新器已把 `app.asar` 解包成 `resources/app`）+ 隔离 `DSH_HOME` 上逐项点过：临时会话创建、tooltip 计数、「临时」角标、右键原生菜单（宿主置顶/重命名/标为未读/分叉 + 本插件「保留为正式会话 / 立即删除」同一张）、菜单里保留后角标消失、详情页开关与「当前临时会话」列表按钮、三种布局切换。**全部正常。**
+- **更正 1：0.2.3-alpha.2 的打包布局**。0.8.7 写的是「退回 `resources/app.asar`」——那是**安装包**的形态；桌面更新器装完会把它解包成 `resources/app/`（本机留下的 `resources/app.asar.purge-20261123-1842.bak` 就是被改名的旧包）。所以同一个版本在真实机器上两种布局都会出现，`scripts/smoke-l5.mjs` 本来就两种都认，错的是 README / DETAIL / CHANGELOG / `test_047` 里的说法，全部按事实改写。
+- **更正 2：「宿主销毁 `contextMenus` 后右键静默失效」不成立**。读源码后确认：`MenuRegistry.resolve()` 在销毁后抛 `Menu registry is disposed`，而 `open()` 内部是同步 `resolve`，异常会抛进我们的 `try/catch`，于是照常落到自有 DOM 菜单（两项都在）。DETAIL 的「已知限制」按这个事实重写，只保留真正的盲区：宿主保留服务却把 `session` 目标的贡献全撤掉时，弹层会打开但没有任何项。
+- **工具：冒烟脚本认出宿主自己的 CLI 路径 bug**。解包布局下 `dsh-desktop-host/lib/cli.js` 把 runtime 算成 `resources/app/runtime`（真实位置是 `resources/runtime`），任何 `dsh plugin …` 都会在安装前就 `MODULE_NOT_FOUND`。`npm run smoke` 以前只会甩一串堆栈，现在先打印一段明确解释（并标注「← 宿主 CLI 路径问题」），不再让人误以为是插件装不上。
+- **使用说明新增 Q6**：命令行装插件报 `Cannot find module …resources\app\runtime\…` 怎么办 —— 用应用内「插件 → 添加插件」（主进程启动时显式传了正确的 runtime 路径），不要在 `resources\app\` 下自建 `runtime` 去凑。
+
+验证：`npm test` 36 个文件 **1243 项全绿**；`npm run compat` 契约矩阵 **54/54**；`npm run check` 打包 21 个文件。真机上的逐项结果见上面第二轮。
 
 ## 0.8.7 — 适配 DSH 0.2.3-alpha.2：右键菜单在会话行上重新可用（2026-11-23）
 
@@ -15,7 +28,7 @@ nightly 渠道的 0.2.3-alpha.2 已经下到本机更新器里（今天 15:23）
 - **右键菜单在 0.2.3-alpha.2 上无声消失（真机发现）**：宿主保留了 `contextMenus` 服务和 `session` 目标的全部内置项，`register()` 也照样成功，**但会话行不再绑定右键手势** —— 于是 0.8.6 注册完就把自有菜单卸掉，右键什么也不弹，「保留为正式会话 / 立即删除」没有任何入口（详情页「当前临时会话」里还在，但侧栏这条完全没了）。现在监听器在两种模式下都常驻，右键时先读 `contextMenus.active`：宿主已经开了就放行；没开就用同一个 `session` 目标调 `contextMenus.open(target, point)`，让宿主的置顶/重命名/标为未读/分叉与本插件两项**出现在同一张原生菜单**里；`open` 不可用或抛错才退回自有 DOM 菜单。普通会话行依旧完全不碰。
 - **新建临时会话后按钮 tooltip 计数不动（真机发现）**：计数只有两个写入点 —— 启动时的 status 回包、以及「保留/删除」后的 id 列表回包。新建成功只弹了 toast，没更新计数，于是提示里一直写「0 active」，刷新页面才变 1。现在 track 成功后同步 `tempCountKnown`，由随后必然执行的 `releaseTempBusy()` 统一重绘（这里不再自己调 `scheduleSync()`：那一刻 `pending` 已置位，多调一次会排在微任务队列里造成整栏重绘两次）。
 - **三轮审阅补的三处**：① 键盘手势（ContextMenu 键 / Shift+F10）触发的 `contextmenu` 坐标是 0,0，照抄会把菜单钉在窗口左上角 —— 现在 0,0 时改用行的 `getBoundingClientRect()` 定位，宿主自己的 trigger 也是这么做的；取点逻辑抽成一个函数，自有 DOM 菜单一起修好（这条在 0.4.0 起就存在，只是没人用键盘试过）。② 合成 target 的 `displayTitle` 改为优先取会话列表快照的 `byId[id].displayTitle`（宿主行传的 `row.title` 就是它），取不到才退回行文本 —— 否则下游读 `displayTitle` 的地方会看到「标题 + 相对时间」。③ 补一条已知限制：宿主若把整个 `contextMenus` 插件销毁（不是降级），本插件不做活性探测，右键会静默失效，与宿主自身所有菜单一致。
-- **契约矩阵新增 0.2.3-alpha.2 画像**：`tests/test_047.mjs` 从五个画像变六个，显式断言 rc.3/rc.4/rc.5/0.2.3 客户端契约同形；打包布局的两种形态（rc.5 的 `resources/app` 解包、0.2.3 的 `resources/app.asar`）都断言由 smoke 覆盖。
+- **契约矩阵新增 0.2.3-alpha.2 画像**：`tests/test_047.mjs` 从五个画像变六个，显式断言 rc.3/rc.4/rc.5/0.2.3 客户端契约同形；打包布局的两种形态（`resources/app.asar` 归档、更新器解包后的 `resources/app/`）都由 smoke 的启动器探测覆盖 —— 0.8.7 当时写的「0.2.3 = app.asar」只对了安装包那一半，运行中的 nightly 会被更新器解包，见 0.8.8。
 - **宿主侧其余变动已核对，均不影响本插件**：`sidebar.panel.trailing` 是新增官方插槽（面板行尾计数），本插件不占用；侧栏滚动条从 JS 计时改成 CSS 过渡；`theme-presenter` 新增对 `document.head` 的 `MutationObserver`，而本插件样式节点只在挂载/热重载时插一次，不形成反馈环；`schemastery` 3.19→3.20-alpha.1、`cordis` 4.1→4.2-alpha.1，本插件只用到 schema 声明，用法未变。
 - **真机逐项验证（解包的 0.2.3-alpha.2 + 隔离 `DSH_HOME`，不碰用户现有 0.2.2-rc.5）**：三种布局切换（标签页 ↔ 显示工作区/显示扩展、浮层、官方默认）、临时会话创建与「临时」角标、计数即时更新、右键原生菜单里的「保留为正式会话」生效、详情页九个开关与配置文件热写（改 `EXPAND_ALL_SESSIONS` 立即落盘）、56px 图标条菜单 + Esc 关闭并回焦、宽栏后菜单自动消失。
 - 验证：`npm test` 36 个文件 **1243 项全绿**；`npm run compat` 契约矩阵 **54/54**；L5 冒烟在 **0.2.2-rc.5** 与 **0.2.3-alpha.2** 上各 **3/3 通过**（装得上→起得来→HTTP 303）。新增/改写的断言都做过变异对照：去掉计数刷新 → C2 红；恢复「原生模式早退」 → B2/B3/B4/B7 红；去掉 `active` 探测 → B6 红；把 `preventDefault` 提到归属判断之前 → 三条红；去掉坐标回落 → B10/B11 红；去掉快照取标题 → B3b 红。每项改回后全绿，红都是 FAIL + 非零退出。

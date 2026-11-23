@@ -46,7 +46,10 @@ const PROFILES = [
   // 0.8.7 — the nightly channel moved the host back into app.asar (rc.5 shipped
   // it unpacked) and stopped binding the right-click gesture on session rows.
   // Neither changes the client contract, so it is the same shape with new facts.
-  { name: '0.2.3-alpha.2 (nightly, app.asar, no row gesture)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native', packaging: 'resources/app.asar' },
+  // The installer carries an app.asar that the desktop updater unpacks into
+  // resources/app on first launch, so both forms exist for this version; the
+  // field records what the package ships, the layout check below covers both.
+  { name: '0.2.3-alpha.2 (nightly, app.asar installer, no row gesture)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native', packaging: 'resources/app.asar' },
 ]
 
 const STATUS_OK = JSON.stringify({
@@ -289,8 +292,9 @@ async function main() {
     shaped.length === 4 && new Set(shaped.map((p) => p.shape)).size === 1,
     shaped.map((p) => p.name + ':' + p.shape).join(' | '))
   const SMOKE_SRC = fs.readFileSync(ROOT + '/scripts/smoke-l5.mjs', 'utf8')
-  // Both packaging layouts are live in the field: rc.5 ships an unpacked
-  // `resources/app`, the nightly moved back into `resources/app.asar`.
+  // Both packaging layouts are live in the field: an install may sit at
+  // `resources/app.asar`, or the updater may have unpacked it to
+  // `resources/app` — which is what the 0.2.3 nightly does on first launch.
   check('matrix: both packaging layouts are covered by the smoke tool',
     PROFILES.find((p) => p.name.includes('rc.5')).packaging === 'resources/app'
       && PROFILES.find((p) => p.name.includes('0.2.3')).packaging === 'resources/app.asar'
