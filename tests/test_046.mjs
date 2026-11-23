@@ -265,8 +265,11 @@ async function main() {
         panel ? JSON.stringify(panel).slice(0, 180) : 'no detail panel')
     }
   }
-  check('menu: native mode disables the DOM fallback listener',
-    healthy.contextMenuListeners() === 0, String(healthy.contextMenuListeners()))
+  // 0.8.7 — a successful registration is not proof that the host opens the
+  // popup: 0.2.3-alpha.2 registers it and keeps the gesture unbound. The
+  // listener therefore stays, and it is what opens the shared menu there.
+  check('menu: native mode keeps exactly one listener to probe the popup',
+    healthy.contextMenuListeners() === 1, String(healthy.contextMenuListeners()))
   check('menu: native menu has not been disposed before teardown',
     healthy.menuDisposers.length === 0, JSON.stringify(healthy.menuDisposers))
 

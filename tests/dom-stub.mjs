@@ -224,8 +224,11 @@ export class El {
     return null
   }
 
+  // Every element reports the same box by default. A test that needs a
+  // distinguishable row (e.g. keyboard menu anchoring) sets `el.__rect`.
   getBoundingClientRect() {
-    return { top: 0, left: 0, right: 292, bottom: 600, width: 292, height: 600, x: 0, y: 0 }
+    const box = { top: 0, left: 0, right: 292, bottom: 600, width: 292, height: 600, x: 0, y: 0 }
+    return this.__rect ? { ...box, ...this.__rect } : box
   }
 
   querySelectorAll(selector) {

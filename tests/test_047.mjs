@@ -43,6 +43,10 @@ const PROFILES = [
   { name: 'rc.3 (grid + session slot)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native' },
   { name: 'rc.4 (same client contracts as rc.3)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native' },
   { name: 'rc.5 (current, unpacked app)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native', packaging: 'resources/app' },
+  // 0.8.7 — the nightly channel moved the host back into app.asar (rc.5 shipped
+  // it unpacked) and stopped binding the right-click gesture on session rows.
+  // Neither changes the client contract, so it is the same shape with new facts.
+  { name: '0.2.3-alpha.2 (nightly, app.asar, no row gesture)', grid: true, slot: true, contextMenu: true, nativeGroups: true, remote: true, shape: 'grid-slot-native', packaging: 'resources/app.asar' },
 ]
 
 const STATUS_OK = JSON.stringify({
@@ -191,7 +195,7 @@ function mountProfile(profile) {
 async function main() {
   // The matrix itself must stay the single source of truth for the profiles.
   check('matrix: covers rc.1, rc.2, rc.3, rc.4 and current',
-    PROFILES.length === 5 && ['rc.1', 'rc.2', 'rc.3', 'rc.4', 'rc.5']
+    PROFILES.length === 6 && ['rc.1', 'rc.2', 'rc.3', 'rc.4', 'rc.5', '0.2.3']
       .every((v) => PROFILES.map((p) => p.name).join('|').includes(v)))
 
   const results = []
@@ -281,13 +285,16 @@ async function main() {
   // difference is packaging (app.asar -> resources/app), which is checked
   // against the smoke tool rather than pretending it changes the sidebar.
   const shaped = PROFILES.filter((p) => p.shape)
-  check('matrix: rc.3/rc.4/rc.5 share one client contract by design',
-    shaped.length === 3 && new Set(shaped.map((p) => p.shape)).size === 1,
+  check('matrix: rc.3/rc.4/rc.5/0.2.3 share one client contract by design',
+    shaped.length === 4 && new Set(shaped.map((p) => p.shape)).size === 1,
     shaped.map((p) => p.name + ':' + p.shape).join(' | '))
   const SMOKE_SRC = fs.readFileSync(ROOT + '/scripts/smoke-l5.mjs', 'utf8')
-  check('matrix: rc.5 packaging difference is covered by the smoke tool',
+  // Both packaging layouts are live in the field: rc.5 ships an unpacked
+  // `resources/app`, the nightly moved back into `resources/app.asar`.
+  check('matrix: both packaging layouts are covered by the smoke tool',
     PROFILES.find((p) => p.name.includes('rc.5')).packaging === 'resources/app'
-      && SMOKE_SRC.includes("resources/app.asar") && SMOKE_SRC.includes("'resources/app'"))
+      && PROFILES.find((p) => p.name.includes('0.2.3')).packaging === 'resources/app.asar'
+      && SMOKE_SRC.includes('resources/app.asar') && SMOKE_SRC.includes("'resources/app'"))
 
   // Guard the matrix table itself against silent narrowing.
   check('matrix: results recorded for every profile', results.length === PROFILES.length)

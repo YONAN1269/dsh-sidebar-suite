@@ -397,8 +397,16 @@ async function main() {
 
   // ==== 13. client-side contract (source level) ===========================
   {
+    // Order, not distance: 0.8.7 inserted the host-popup branch between the
+    // guard and the first preventDefault, and a fixed character window would
+    // only be measuring how much code sits in between.
+    const menuHandler = client.slice(
+      client.indexOf('function onTempContextMenu'),
+      client.indexOf('function onTempContextMenu') + 3000,
+    )
     check('the menu never sets preventDefault on a row it does not own',
-      /if \(!id \|\| tempIds\.indexOf\(id\) < 0\) return[\s\S]{0,200}?event\.preventDefault\(\)/.test(client))
+      menuHandler.indexOf('tempIds.indexOf(id) < 0') > -1 &&
+      menuHandler.indexOf('event.preventDefault()') > menuHandler.indexOf('tempIds.indexOf(id) < 0'))
     check('the listener is delegated at the document level',
       client.includes("document.addEventListener('contextmenu', onTempContextMenu)"))
     check('the listener is removed on teardown',

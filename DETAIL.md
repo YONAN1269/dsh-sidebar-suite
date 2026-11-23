@@ -138,8 +138,8 @@ export function apply(ctx) {
 dsh plugin --profile desktop add dsh-sidebar-suite
 ```
 
-本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.5（desktop profile）** 真机验证；`rc.1` / `rc.2` / `rc.3` 同样兼容但已过时。逐项 DOM 对照见本文末尾「宿主兼容与契约表」。
-For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.5 (desktop profile)**; rc.1 / rc.2 / rc.3 still work but are superseded. See the host compatibility table at the end of this document for the per-version DOM diff.
+本地开发可把包名换成本目录路径或 `.tgz` 安装包。已在 **DSH 0.2.2-rc.5（desktop profile）** 与 **0.2.3-alpha.2（nightly，隔离 `DSH_HOME` 实跑）** 真机验证；`rc.1` / `rc.2` / `rc.3` 同样兼容但已过时。逐项 DOM 对照见本文末尾「宿主兼容与契约表」。
+For local development, point the same command at this folder or a packed `.tgz`. Tested on **DSH 0.2.2-rc.5 (desktop profile)** and **0.2.3-alpha.2** (nightly, run against an isolated `DSH_HOME`); rc.1 / rc.2 / rc.3 still work but are superseded. See the host compatibility table at the end of this document for the per-version DOM diff.
 
 **升级插件包后仍需重启 / Upgrading the plugin package still needs a restart** — 安装新版或改 `lib/` 下的代码后，请完全退出并重新打开 DSH（客户端代码不热重载）。**但改配置不用重启**：0.2.8 起 `temp-session-config.txt` 的改动、以及详情页的任何开关，都在约 3 秒内原地生效。 / Config edits are the exception: from 0.2.8 they hot-reload in place within seconds.
 
@@ -195,6 +195,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 - **入口用右键，不在行里加按钮**。会话行由 React 拥有，往里塞节点会被下一次重渲染清掉；`data-dsbs-temp-row` 是属性，`applyTempRows()` 随时能补回来，节点不行。右键是零 DOM 侵入的入口。
 - **只拦自己的行**。`onTempContextMenu` 先解析 `data-row-key`，id 不在 `tempIds` 里就直接 `return`，`preventDefault()` 根本不会执行。所以宿主或别的插件的右键菜单在普通会话上照常工作 —— 这是这条功能唯一的兼容性风险，用「不碰」消掉它。真撞上了还有 `TEMP_ROW_MENU=off` 整条让出。
+- **注册成功 ≠ 菜单会出现（0.8.7）**。0.7.4 起优先注册宿主的 `contextMenus`（`target: 'session'`），注册成功就卸掉自有 DOM 菜单。0.2.3-alpha.2 保留了服务、保留了 `session` 目标的全部内置项（置顶 / 重命名 / 标为未读 / 分叉 / 打开目录 / 复制 ID），**但会话行不再绑定右键手势**，于是右键什么都不会弹，注册是「死的」。现在监听器在两种模式下都常驻，右键时读 `contextMenus.active`：非空 = 宿主自己开了，直接放行；为空 = 没人开，就用同一个 `session` 目标调 `contextMenus.open(target, point)`，宿主菜单与本插件两项合并显示（真机截图核对过）；`open` 不存在或抛错才退回自有 DOM 菜单。普通会话行仍然完全不碰：不 preventDefault、不 stopPropagation。三处配套细节：① 键盘点出的 `contextmenu` 坐标为 0,0（宿主自己的 trigger 也按这个约定处理），照抄会把菜单钉在窗口左上角，所以 0,0 时改用行的 `getBoundingClientRect()` 定位 —— 自有 DOM 菜单走同一个取点函数，两条路径一起修好；② 合成 target 的 `displayTitle` 优先取会话列表快照的 `byId[id].displayTitle`（宿主行传的 `row.title` 就是它），取不到才退回行文本，否则下游读 `displayTitle` 的地方会看到「标题 + 相对时间」；③ 已知限制：若宿主把整个 `contextMenus` 插件卸载（不是降级、是销毁），本插件不做活性探测，右键会静默失效 —— 这与宿主自身所有菜单的表现一致，不做额外兜底。
 - **「保留」复用已有后端**。0.2.0 起就有 `POST /api/dsh-temp-session.untrack`，只是当时没有 UI 入口。所以转正是纯前端改动，Host 半一行没动。
 - **「删除」新增路由，且只能删 tracked**。`POST /api/dsh-temp-session.remove?sessionId=…` 走 `removeOne()`：先 `removeSession()` 删目录，再用 `sessionDirsSync()` 确认真的空了；没删掉就 `hideSession()` 归档隐藏。关键在**只接受 `state.tracked` 里的 id，且在调用任何文件操作之前就拒绝** —— 这条路由能从页面调到，不能变成「按 id 删任意会话」的通用删除接口。删除失败时不从 tracked 移除，下次启动继续重试（与 `purgeAll` 一致），否则会留下「已经不算临时、却还在磁盘上」的孤儿。
 - **id 与目标路径各校验一次（0.5.1）**。只信 tracked 还不够：`normalizeId` 的字符类允许 `.`，而 `join(root, workspace, '..')` 会折叠成工作区目录本身，`rm -r` 就会删掉该工作区下的全部会话；存储文件 `temp-sessions.json` 是明文，被写入 `..` 时启动 / 退出清理会照单执行。所以现在两层都拦：`isUnsafeId` 把 `.`/`..`/任何含 `..` 的串判为非 id；`safeSessionDir()` 再要求目标正好是 `<sessions>/<工作区>/<id>` 两层、`relative()` 不以 `..` 开头、`realpath` 后仍在真实的 sessions 根内，且 `lstat` 必须是真目录（symlink 一律跳过，避免 `rm -r` 顺着链接删到别处）。回归见 `tests/test_037.mjs`——同一套测试跑已发布的 0.5.0 会失败 8 项，其中包括两个工作区的会话目录被整个删掉。
@@ -256,8 +257,9 @@ Plain English: the Temp button now creates a real DSH session (sidebar entry, na
 
 - **rc.2（2026-11-12）**：侧栏根从 flex 列改成 CSS Grid，宿主面板被显式钉在特定行；`0.4.1` 把控制栏/页签条从 grid 移到父级 `scrollRegion`。
 - **rc.3（2026-11-13）**：「新会话」行新增 `sidebar.session.action` 官方插槽；`0.6.0` 把临时按钮从负边距 hack 改挂该插槽，同时保留旧宿主回退。
-- **rc.5（2026-11-18，本机当前版本）**：宿主源码从 `app.asar` 解包到 `resources/app`；`DSH_CLIENT_VERSION` 仍由桌面主进程注入，侧栏 / 菜单 / Remote 契约无变化。搜索计费策略调整未触及本插件。`scripts/smoke-l5.mjs` 已同时识别两种安装布局，L5 冒烟 3/3 通过。
+- **rc.5（2026-11-18）**：宿主源码从 `app.asar` 解包到 `resources/app`；`DSH_CLIENT_VERSION` 仍由桌面主进程注入，侧栏 / 菜单 / Remote 契约无变化。搜索计费策略调整未触及本插件。`scripts/smoke-l5.mjs` 已同时识别两种安装布局，L5 冒烟 3/3 通过。
+- **0.2.3-alpha.2（2026-11-23，nightly 渠道）**：打包退回 `resources/app.asar`（smoke 两种布局都能认）；`schemastery` 3.19→3.20-alpha.1、`cordis` 4.1→4.2-alpha.1，但本插件只用 `schemastery` 的 schema 声明，用法未变。客户端三处变动与本插件相关：① `sidebar.panel.trailing` 新增官方插槽（面板行尾计数）——纯增量，本插件不占；② 侧栏滚动条从「JS 计时 2s」改成 CSS 过渡（`quietBars` 的 `transition`）——纯样式，互不影响；③ `theme-presenter` 新增对 `document.head` 的 `MutationObserver`，本插件的样式节点只在挂载/热重载时插一次，不会形成反馈环。真正影响功能的是**会话行不再绑定右键手势**：`contextMenus` 服务与 `session` 目标的贡献仍在，注册也仍然成功，但右键会话行不再打开共享菜单，于是「保留为正式会话 / 立即删除」在 0.8.6 上无声消失。0.8.7 改为「读一次弹层状态再决定」：右键时读 `contextMenus.active`，宿主已经打开就什么都不做；没打开就用同一个 `session` 目标自己调 `contextMenus.open()`，宿主原有的置顶/重命名/标为未读/分叉与本插件两项**出现在同一张菜单**里；`open()` 不可用或抛错时退回自有 DOM 菜单。已在解包出的 0.2.3-alpha.2 真机（隔离 `DSH_HOME`）逐项验证：三种布局、临时会话创建/计数/保留、详情页九个开关与配置热写、56px 图标条菜单与 Esc 回焦、右键原生菜单。
 
 **约定原则 / Rules**：只匹配语义后缀（`/scrollArea/`、`/panelList/`），绝不匹配构建生成的哈希前缀；宿主改版优先走官方插槽/服务，其次才用 DOM 嗅探；嗅探逻辑集中在 `resolveSidebar()` 一处。
 
-回归：`tests/test_047.mjs` 是可重复的**宿主契约矩阵**——用表驱动的 rc.1 / rc.2 / rc.3 / rc.4 / rc.5 五个画像驱动真实 bundle，逐项核对侧栏解析、控制栏归属、会话插槽、原生菜单注册与实际「打开目录」分支（无 Remote 时复制、有 Remote 时带 signal reveal）；rc.3/rc.4/rc.5 客户端契约相同这点在矩阵里显式断言，rc.5 的解包差异由 smoke 工具断言覆盖。新宿主版本只需加一行画像。`tests/test_034.mjs` 固化 rc.2 的 DOM 类名契约；`tests/test_035.mjs` 盯住 `scrollArea`/`scrollRegion` 解析；`tests/test_038.mjs` 盯住 rc.3 插槽；`tests/test_045.mjs` 盯住缺关键路由时徽标转红；`tests/test_046.mjs` 覆盖 rc.1 统一菜单、rc.2 原生收纳让位与「打开会话目录」。跑 `npm test` 全绿即视为契约未被破坏。
+回归：`tests/test_047.mjs` 是可重复的**宿主契约矩阵**——用表驱动的 rc.1 / rc.2 / rc.3 / rc.4 / rc.5 / 0.2.3-alpha.2 六个画像驱动真实 bundle，逐项核对侧栏解析、控制栏归属、会话插槽、原生菜单注册与实际「打开目录」分支（无 Remote 时复制、有 Remote 时带 signal reveal）；rc.3/rc.4/rc.5/0.2.3 客户端契约相同这点在矩阵里显式断言，rc.5 解包与 0.2.3 重新打包（`app.asar`）的差异由 smoke 工具断言覆盖。新宿主版本只需加一行画像。`tests/test_034.mjs` 固化 rc.2 的 DOM 类名契约；`tests/test_035.mjs` 盯住 `scrollArea`/`scrollRegion` 解析；`tests/test_038.mjs` 盯住 rc.3 插槽；`tests/test_045.mjs` 盯住缺关键路由时徽标转红；`tests/test_046.mjs` 覆盖 rc.1 统一菜单、rc.2 原生收纳让位与「打开会话目录」。跑 `npm test` 全绿即视为契约未被破坏。

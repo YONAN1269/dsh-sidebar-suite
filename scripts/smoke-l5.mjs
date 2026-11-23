@@ -88,9 +88,10 @@ function isReachable(cliJs) {
   return existsSync(cliJs.slice(0, idx) + 'app.asar')
 }
 
-// rc.5 moved the unpacked host sources from resources/app.asar/... to a real
-// resources/app/... tree. Accept both layouts so the smoke check keeps working
-// on the version the user actually has installed.
+// The host has shipped both layouts: rc.5 unpacked its sources into a real
+// resources/app/... tree, and 0.2.3-alpha.2 moved them back inside
+// resources/app.asar. Accept both so the smoke check keeps working on whatever
+// version is installed.
 function desktopCliFromBase(baseDir) {
   const rel = 'dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js'
   const candidates = [
