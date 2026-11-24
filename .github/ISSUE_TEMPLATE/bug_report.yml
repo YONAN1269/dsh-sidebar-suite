@@ -1,0 +1,70 @@
+name: 问题报告 / Bug report
+description: 哪里坏了、哪里不对 / Something is broken or wrong
+title: "[问题] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **省一轮往返的办法**：插件详情页最下面的「反馈」框 → 点「复制反馈内容」，
+        报告会自动带上插件版本、DSH 版本、系统、当前布局、临时按钮模式、最近一次错误。粘到下面即可。
+
+        Fastest path: on the plugin detail page, click **Copy report** in the Feedback box —
+        it packs your versions, OS, layout and last error into text. Paste it below.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 出了什么问题 / What went wrong
+      description: 一句话说清你看到的异常 / One or two sentences
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 怎么复现 / Steps to reproduce
+      placeholder: |
+        1. 布局切到「标签页」
+        2. 点「临时」
+        3. ……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 本来应该怎样 / What you expected
+    validations:
+      required: false
+
+  - type: textarea
+    id: report
+    attributes:
+      label: 反馈报告 / The copied report
+      description: 上面说的「复制反馈内容」粘到这里 / Paste the copied report here
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: layout
+    attributes:
+      label: 出问题时的布局 / Layout when it happened
+      options:
+        - 标签页 / Toggle (b)
+        - 浮层 / Overlay (c)
+        - 官方默认 / Default (n)
+        - 不确定 / Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 补一句 / Before submitting
+      options:
+        - label: 我完全退出并重开过 DSH（客户端代码不热重载）/ I fully quit and reopened DSH
+          required: false
+        - label: 我在最新版本上还能复现 / It still happens on the latest version
+          required: false

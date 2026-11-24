@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 用法问题 / Usage questions
+    url: https://github.com/YONAN1269/dsh-sidebar-suite/discussions
+    about: 怎么用、配置怎么改、布局选哪个 —— 去 Discussions 问，那里也能看到别人的用法 / How-to and configuration questions belong in Discussions
+  - name: 插件市场评论区 / Marketplace comments
+    url: https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/discussions?discussions_q=%22plugin%3AYONAN1269%2Fdsh-sidebar-suite%22
+    about: 在插件市场里直接留言 / Leave a comment straight from the plugin market

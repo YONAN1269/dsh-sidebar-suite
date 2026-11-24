@@ -1,0 +1,54 @@
+name: 功能建议 / Feature request
+description: 想要某个功能，或者觉得某处用起来别扭 / Suggest a feature or point out something awkward
+title: "[建议] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **先看一眼**：这个插件的定位是「只管左侧栏」——布局、会话展开、临时会话、设置页。
+        涉及会话内容、模型切换、独立面板、云服务的建议通常不在范围内。
+
+        Keep it scoped: this plugin only touches the left sidebar. Anything about session content,
+        model switching, standalone panels or cloud services is usually out of scope.
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 你当时在做什么 / What were you doing
+      description: 具体一点：在哪个布局下、点了什么、想达到什么效果 / Be specific: which layout, what you clicked, what you wanted
+      placeholder: 例如：在标签页布局下，我想……但是……
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 现在是什么样 / What happens now
+      description: 当前的行为，越具体越好 / The current behaviour, as concretely as you can
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你希望变成什么样 / What you expected
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: 版本 / Versions
+      description: 插件版本 + DSH 版本。插件详情页底部的「复制反馈内容」会自动带上这些信息，粘到这里即可 / Paste the copied report from the plugin detail page
+      placeholder: dsh-sidebar-suite 1.0.0 · DSH 0.2.3-alpha.2 · Windows 11
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 自查 / Quick check
+      options:
+        - label: 我确认这是关于左侧栏体验的建议，不是会话内容或模型相关 / This is about the sidebar, not session content or models
+          required: true
