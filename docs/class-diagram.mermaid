@@ -1,0 +1,68 @@
+classDiagram
+    class HostContext {
+        +get(name) any
+        +inject(names, callback) void
+        +provide(name, service) void
+        +effect(fn, label) Disposer
+        +connection: Service
+        +logger: Logger
+    }
+
+    class HostBridge {
+        <<新增·client.js 文件内函数块>>
+        +hostRead(obj, path, fallback) any
+        +hostResolve() SidebarRef
+        +hostCall(service, method, args) Result
+        +featureDetect(service, method) boolean
+        +degrade(reason, scope) void
+        +KNOWN_SLOTS: string[]
+    }
+
+    class SidebarRef {
+        <<现有·resolveSidebar 返回>>
+        +root: Element
+        +scrollArea: Element
+        +headerHost: Element
+        +nav: Element
+        +regionArea: Element
+        +workspaces: Element
+    }
+
+    class Runtime {
+        +mode: string
+        +sessionMode: string
+        +rail: boolean
+        +railOpen: boolean
+        +popOpen: boolean
+        +activeTab: string
+        +disposed: boolean
+    }
+
+    class ConfigLayer {
+        <<现有·双通道>>
+        +values: object
+        +controller: ConfigController
+        +local: boolean
+        +mutate(ops) Result
+    }
+
+    class TempHostBridge {
+        <<新增·host 侧>>
+        +register(hostCtx) void
+        +status() object
+        +degraded: string
+    }
+
+    class DegradedState {
+        +reason: string
+        +scope: string
+        +hiddenControls: string[]
+    }
+
+    HostContext <.. HostBridge : 读取/调用（带守卫）
+    HostBridge --> SidebarRef : 产出（失败返回 null）
+    HostBridge --> DegradedState : 写入
+    Runtime --> HostBridge : 依赖探测结果
+    ConfigLayer --> HostBridge : hostCall(configForms)
+    HostContext <.. TempHostBridge : inject(connection)/effect
+    TempHostBridge --> DegradedState : 写入

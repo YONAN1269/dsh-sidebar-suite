@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    participant DSH as DSH 宿主(版本未知)
+    participant IDX as lib/index.js
+    participant TH as temp-session-host.mjs
+    participant CF as lib/client.js factory
+    participant HB as HostBridge(新增)
+    participant UI as 侧栏 DOM
+
+    Note over DSH,UI: 流程一：启动 + 未知宿主降级
+    DSH->>IDX: apply(ctx)
+    IDX->>TH: 懒加载 createTempSessionHost(ctx) (try/catch)
+    TH->>DSH: ctx.get('connection').fetch.register(路由)
+    alt connection 服务不可用
+        TH-->>IDX: state.routes.errors += 原因（不抛出）
+        Note right of TH: degrade('no-connection', 'temp-routes')
+    else 注册成功
+        TH-->>IDX: routes.registered = N
+    end
+    DSH->>CF: __ModuleLoader__.load(factory(require))
+    CF->>HB: hostResolve() 解析 sidebar
+    HB->>UI: querySelector(data-slot / panelList / scrollArea)
+    alt 找到侧栏节点
+        HB-->>CF: SidebarRef
+        CF->>UI: 挂控制栏 / 临时按钮 / 观察器
+    else 节点缺失(可能是新宿主结构)
+        HB-->>CF: null
+        CF->>HB: degrade('sidebar-unresolved','layout')
+        HB->>UI: 隐藏布局控件, 保留日志一次, 不崩
+    end
+
+    Note over DSH,UI: 流程二：用户点「临时」创建会话
+    UI->>CF: click tempButton
+    CF->>CF: createTempSession(): tempBusy 守卫
+    CF->>HB: hostCall(uiWorkspace, createNamed/startSession)
+    alt 服务缺失/抛错
+        HB-->>CF: {ok:false,error}
+        CF->>UI: toast(noNative + restartHint)  ← 约束①可见反馈
+    else 创建成功
+        HB-->>CF: {ok:true,value:id}
+        CF->>TH: POST /api/dsh-temp-session.track?sessionId=id
+        TH-->>CF: {ok:true,ids}
+        CF->>UI: applyTempRows() + tooltip 计数刷新
+    end
+    Note right of CF: 看门狗 WRITE_TIMEOUT_MS+3000 兜底释放 busy（约束②无死状态）
