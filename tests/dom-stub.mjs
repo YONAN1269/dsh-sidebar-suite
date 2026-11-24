@@ -306,8 +306,52 @@ export class Doc {
 // pins nav.panelList to grid-row 2 and div.regionArea to grid-row 4. Tests that
 // verify the plugin's header placement MUST opt in, otherwise they silently
 // exercise the older flex-only root and miss the grid auto-placement bug.
+// 1.0.0 M1 — a reusable "unknown shape" descriptor. DSH 0.3.0 is unpublished,
+// so this is NOT a claim about a real 0.3 build: it is only a host whose
+// observable shape (anchors, services, API behaviour) the 0.2.x client cannot
+// rely on. Suites use it to prove graceful degradation, not compatibility.
+export const UNKNOWN_HOST_PROFILE = Object.freeze({
+  name: 'unknown shape (no anchors, no services, APIs may throw)',
+  grid: false,
+  slot: false,
+  contextMenu: false,
+  nativeGroups: false,
+  remote: false,
+  unknownShape: true,
+  missingWorkspaces: true,
+  missingServices: true,
+  throwOnQuery: false,
+})
+
+/** Make the workspaces anchor query throw, simulating an unknown host API. */
+function armThrowingQuery(doc) {
+  const base = doc.querySelector.bind(doc)
+  doc.querySelector = (selector) => {
+    if (String(selector).indexOf('sidebar.workspaces') >= 0) {
+      throw new Error('unknown host: querySelector threw')
+    }
+    return base(selector)
+  }
+  return doc
+}
+
 export function buildSidebar(options = {}) {
   const doc = new Doc()
+
+  // Future-host shape: none of the 0.2.x semantic anchors exist. The resolver
+  // must return null and the client must leave the host's own column untouched.
+  if (options.unknownShape === true) {
+    const alien = doc.createElement('section')
+    alien.className = 'future-host-column'
+    alien.appendChild(doc.createElement('div'))
+    doc.body.appendChild(alien)
+    if (options.throwOnQuery === true) armThrowingQuery(doc)
+    return {
+      doc, root: alien, nav: null, region: null, workspaces: null,
+      scrollRegion: null, scrollArea: alien, unknownShape: true,
+    }
+  }
+
   const root = doc.createElement('div')
   root.setAttribute('data-dsbs-test-root', '')
   root.className = 'wtg9ga_scrollArea'
@@ -331,7 +375,18 @@ export function buildSidebar(options = {}) {
   } else {
     doc.body.appendChild(root)
   }
-  return { doc, root, nav, region, workspaces, scrollRegion, scrollArea: root }
+  // A host that kept most of the markup but renamed/removed only the workspaces
+  // slot: the resolver fails while the rest of the DOM stays intact, which is
+  // the exact case where a null ref used to be dereferenced.
+  if (options.noSidebar === true || options.missingWorkspaces === true) {
+    region.removeChild(workspaces)
+  }
+  if (options.throwOnQuery === true) armThrowingQuery(doc)
+  return {
+    doc, root, nav, region, workspaces, scrollRegion, scrollArea: root,
+    missingWorkspaces: options.noSidebar === true || options.missingWorkspaces === true,
+    throwOnQuery: options.throwOnQuery === true,
+  }
 }
 
 // ---------------------------------------------------------------- timers
