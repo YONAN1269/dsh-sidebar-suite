@@ -41,6 +41,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 ### 美观性 / Looks native
 
 - **不另起一套皮肤 / No custom skin** — 颜色、边框、文字层级全部取宿主的设计变量（`--dsw-alias-*`），深色 / 浅色主题自动跟随，侧栏里不会出现一块「外来的」色块。Colours, borders and text levels come from the host's own design tokens, so light and dark themes both look native.
+- **栅格对齐 / On the host's grid** — 控制栏不是另起一条边距：它镜像宿主每一个行都在用的 `margin-inline: calc(var(--dsh-sidebar-paint-inset) + 1px)`，所以胶囊的左缘和「新会话」按钮、会话行的左缘在同一条竖线上（0.8.10 修掉了 4px 的偏差；宿主调整 inset 时自动跟随）。The bar mirrors the inline margin every host row uses, so the pill lines up with the New-session button and the session rows above and below it.
 - **视觉重量对齐 / Same visual weight** — 0.2.9 起控制栏换成 **28×26 的图标按钮 + 16px 矢量图标**：三个布局装进一枚圆角胶囊（选中项白底 + 1px 投影），动作按钮用 1px 竖线分隔。图标是 CSS mask（`currentColor` 上色），所以跟着宿主主题走；窄侧栏只留图标，宽于 300px 时动作按钮把文字长回来。Since 0.2.9 the bar is 28×26 icon buttons with 16 px vector glyphs: the three layouts share a rounded pill (active = light fill + 1 px shadow), and a 1 px divider separates the action buttons. The glyphs are CSS masks painted in `currentColor`, so they follow the host theme; icon-only when narrow, labelled again past 300 px.
 - **看得懂的示意图 / Diagrams, not words** — 三张布局卡各画一个 36×24 的迷你侧栏示意，选中的那张标「当前默认」，不用读说明也能分辨。Each layout card draws a 36×24 mini sidebar and marks the current default.
 - **不遮挡、不闪烁 / No jumps** — 隐藏分组用 `display:none` + `aria-hidden` + `inert`，切换是纯 CSS 显隐，不卸载重建节点；浮层用 10px 圆角和柔和阴影盖在工作区上方，不把内容挤走。Pure-CSS show/hide, no unmounting; the overlay uses a 10 px radius and a soft shadow.
@@ -123,6 +124,7 @@ export function apply(ctx) {
 - **失败只烂在自己那一页** — `mount` 抛异常时，错误写进它自己的容器并 `console.error` 一次，侧栏其余部分不受影响。A throwing consumer is contained inside its own page.
 - **"失去这一列"只有一种通知方式** — 不管是被另一个插件页顶掉、被用户再点一次退回、还是布局 B 下点了「扩展 / 工作区」，走的都是同一次 `subscribe('active', null)`；在两个内置组之间来回切则不通知，因为对消费方来说什么都没变。订阅者不必自己推断"我现在还在不在屏幕上"。Losing the column always arrives as one notification, whoever took it; switching between two built-ins stays silent because nothing changed for the consumer.
 - **进不去的边界** — 页签只拿到发给它的容器，没有能力移动、覆盖或重构宿主 DOM。A tab owns its container and nothing else.
+- **键盘能走完整条 / Keyboard-complete（0.8.10）** — 页签条是一个真正的 `tablist`：只有当前选中项在 Tab 顺序里（roving tabindex），`←/→/Home/End` 在页签之间移动焦点，回车或空格打开。采用手动激活而不是「焦点到哪就开哪页」，因为每个页签第一次打开都要挂载消费方的页面，方向键划过三个页签不该把三个页面都跑一遍。One tab is in the Tab order at a time, arrows/Home/End move focus, Enter or Space opens — manual activation, so arrowing across three tabs does not mount three pages.
 
 三种布局的差异 / Under the three layouts：
 
