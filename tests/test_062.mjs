@@ -79,6 +79,16 @@ function buildClient(options = {}) {
     tree.root.appendChild(row)
   }
 
+  // A temporary-session row for the receiver-sensitive context-menu probe.
+  if (opts.sessionRow && tree.workspaces) {
+    const row = doc.createElement('div')
+    row.setAttribute('data-row-key', 'session:' + opts.sessionRow)
+    const label = doc.createElement('span')
+    label.textContent = '临时会话'
+    row.appendChild(label)
+    tree.workspaces.appendChild(row)
+  }
+
   // A mutation that removes a guard must fail an ASSERTION, not crash the test
   // process from an uncaught heartbeat callback ("red must be clean"). apply()
   // itself stays directly observable through applyError below.
@@ -112,6 +122,7 @@ function buildClient(options = {}) {
     entriesOfSlot() { return [] },
     subscribe() { return () => {} },
   }
+  const menus = opts.menus || null
 
   const sandbox = {
     window: {
@@ -128,7 +139,13 @@ function buildClient(options = {}) {
       setItem: (key, value) => storage.set(key, String(value)),
       removeItem: (key) => storage.delete(key),
     },
-    fetch: async () => new Response(JSON.stringify(STATUS), { status: 200 }),
+    fetch: async (input) => {
+      const url = String((input && input.url) || input || '')
+      if (url.indexOf('dsh-temp-session.list') >= 0) {
+        return new Response(JSON.stringify({ ok: true, ids: opts.listIds || [] }), { status: 200 })
+      }
+      return new Response(JSON.stringify(STATUS), { status: 200 })
+    },
     Request, Response, URL, URLSearchParams,
     Event: class { constructor(type) { this.type = type } },
     KeyboardEvent: class { constructor(type, init) { this.type = type; Object.assign(this, init) } },
@@ -166,7 +183,12 @@ function buildClient(options = {}) {
       if (typeof callback !== 'function') return
       // A missing host exposes no services at all; an ordinary one exposes
       // slots and contextMenus but deliberately no remote/configForms.
-      callback(serviceMissing ? {} : { slots, contextMenus: { register() { return () => {} } } })
+      if (serviceMissing) { callback({}); return }
+      const scope = { slots }
+      if (Array.isArray(deps) && deps.indexOf('contextMenus') >= 0) {
+        scope.contextMenus = menus || { register() { return () => {} } }
+      }
+      callback(scope)
     },
     provide(name, value) { published[name] = value },
   }
@@ -204,16 +226,29 @@ async function main() {
 
   // ---- A. sidebar node missing -----------------------------------------
   {
+    const rejectionsBefore = microtaskErrors.length
     const host = buildClient({ unknownShape: true })
     await settle()
     check('A1: an unknown shape does not throw out of apply()',
       host.applyError === null, String(host.applyError && host.applyError.message))
+    // Own the async verdict here: "paint ignored null" must fail THIS group,
+    // not only the suite-final C6 net.
+    check('A1b: no unhandled rejection escapes the paint/sync cycle',
+      microtaskErrors.length === rejectionsBefore,
+      microtaskErrors.slice(rejectionsBefore).map(String).join(' | '))
     check('A2: no control bar is mounted into an unknown host',
       firstOrDefault(host.doc, '[data-dsbs-bar]') === null)
     check('A3: no rail menu is mounted into an unknown host',
       firstOrDefault(host.doc, '[data-dsbs-rail-menu]') === null)
+    const hostColumn = firstOrDefault(host.doc, '.future-host-column')
+    const hostColumnHidden = !!hostColumn && (
+      hostColumn.hasAttribute('hidden') ||
+      /display\s*:\s*none/.test(hostColumn.getAttribute('style') || '') ||
+      !!(hostColumn.style && /none/.test(String(hostColumn.style.display || '')))
+    )
     check('A4: the host is never hidden by a stale ptab rule',
-      host.doc.documentElement.getAttribute('data-dsbs-ptab') !== 'true')
+      host.doc.documentElement.getAttribute('data-dsbs-ptab') !== 'true' && !hostColumnHidden,
+      'ptab=' + host.doc.documentElement.getAttribute('data-dsbs-ptab') + ' hidden=' + hostColumnHidden)
     check('A5: the reason is recorded once',
       hasDegradation(host.warnings, 'layout:sidebar-unresolved') &&
       host.warnings.filter((line) => line.indexOf('sidebar-unresolved') >= 0).length === 1,
@@ -221,7 +256,8 @@ async function main() {
     check('A6: no DOM observer is registered without a sidebar',
       host.observers.length === 0, String(host.observers.length))
     check('A7: the host DOM is left as it was found',
-      !!firstOrDefault(host.doc, '.future-host-column'))
+      !!hostColumn && !hostColumnHidden,
+      hostColumn ? 'hidden=' + hostColumnHidden : 'no host column')
     const service = host.published.sidebarSuite
     check('A8: the public service still exists (core layout kept)',
       !!service && typeof service.getLayout === 'function')
@@ -287,10 +323,51 @@ async function main() {
       !!host.published.sidebarSuite &&
       typeof host.published.sidebarSuite.getTabs === 'function' &&
       typeof host.published.sidebarSuite.getLayout === 'function')
-    check('C6: the shipped code leaves no unhandled microtask rejection',
-      microtaskErrors.length === 0,
-      microtaskErrors.map(String).join(' | '))
   }
+
+  // ---- E. a host getter that reads `this` ------------------------------
+  // Before the fix, hostRead() invoked getSnapshot()/get() with no receiver,
+  // so a host method like `getSnapshot() { return this.tag }` threw and the
+  // client wrongly opened its own menu on top of an already-open host popup.
+  {
+    const opens = []
+    const menus = {
+      active: {
+        tag: 'x',
+        getSnapshot() { return this.tag },
+      },
+      register() { return () => {} },
+      open(target, point) { opens.push({ target, point }) },
+    }
+    const host = buildClient({
+      menus,
+      sessionRow: 'this-dependent',
+      listIds: ['this-dependent'],
+    })
+    await settle()
+    const rowLabel = firstOrDefault(host.doc, '[data-row-key="session:this-dependent"] span')
+    check('E0: the temporary row reaches the menu probe', !!rowLabel)
+    if (rowLabel) {
+      const event = {
+        type: 'contextmenu', target: rowLabel, clientX: 40, clientY: 60,
+        preventDefault() { event.prevented = true },
+        stopPropagation() { event.stopped = true },
+      }
+      host.doc.dispatchEvent(event)
+      await settle()
+      check('E1: a this-dependent getSnapshot keeps its receiver',
+        opens.length === 0 && event.prevented !== true,
+        JSON.stringify({ opens: opens.length, prevented: event.prevented }))
+    } else {
+      check('E1: a this-dependent getSnapshot keeps its receiver', false, 'no row')
+    }
+  }
+
+  // Final net, after every asynchronous scenario: no group may leave a
+  // rejection behind for the next one (A1b owns the A-group verdict).
+  check('C6: the shipped code leaves no unhandled microtask rejection',
+    microtaskErrors.length === 0,
+    microtaskErrors.map(String).join(' | '))
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail) process.exitCode = 1
