@@ -158,6 +158,17 @@ For local development, point the same command at this folder or a packed `.tgz`.
 - 浮层定位依赖 `:has()`，需要 Chromium 内核（DSH 桌面端即是）。Overlay positioning uses `:has()`, so it needs a Chromium-based client.
 - 标签页模式会整块隐藏工作区区域，里面的其它入口也一并隐藏 —— 这是「一组一栏」的刻意设计；官方默认则两组都不隐藏。Toggle mode hides the whole workspaces region; the official default hides neither group.
 
+## 1.0 稳定性契约 / Stability contract（1.0.0）
+
+从 **1.0.0** 起，插件保证 **1.x 系列内不做破坏性变更**。承诺范围只有四类：**配置键**（profile 的 `mode`/`tab`/`showQuickSwitch` + `temp-session-config.txt` 的 11 个键）、**`sidebarSuite` 服务**（`registerTab`/`unregisterTab`/`getTabs`/`activateTab`/`getActiveTab`/`subscribe`/`getLayout`/`version`）、**14 条 `/api/dsh-temp-session.*` 路由**（改状态的只用 POST，响应恒为 `{ok,…}`）、**8 个 `<html>` 状态属性**（`data-dsbs-mode`/`-tab`/`-pop`/`-rail`/`-narrow`/`-ptab`/`-expand-all`/`-temp-mode`）。
+
+内部 DOM 结构、CSS 类名、其余 `data-dsbs-*` 内部标记、日志逐字文案**都不承诺**——它们随时可能为修 bug 或改样式而变。
+
+- 逐条契约：[docs/CONTRACT-1.0.md](docs/CONTRACT-1.0.md)
+- 0.8.x → 1.0.0 升级指南：[docs/UPGRADE-1.0.md](docs/UPGRADE-1.0.md)（**不用改配置**）
+
+Since 1.0.0 the public surface is frozen for the 1.x line: config keys, the `sidebarSuite` service, the temp-session routes, and eight `<html>` state attributes. Internal DOM, class names, other `data-dsbs-*` markers and log wording are explicitly not covered.
+
 ## 临时会话 / Temporary session（0.2.0）
 
 > **默认行为 / Defaults**：`DELETE_ON_EXIT=on` —— 临时会话**默认在退出 DSH 时删除**（0.8.0 起数据先移进本机回收站，默认留 7 天可恢复，`KEEP_DELETED=off` 才是当年那种直接删）；`SCHEDULE_DELETE=off` —— **每天定时清理默认关**，只有你在详情页打开它并设了时间才会按天清理。两项互不影响，可以同时开。

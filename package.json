@@ -1,6 +1,6 @@
 {
   "name": "dsh-sidebar-suite",
-  "version": "0.8.11",
+  "version": "1.0.0",
   "license": "MIT",
   "author": "Yonan",
   "repository": {
@@ -62,7 +62,9 @@
     "LICENSE",
     "assets/*.jpg",
     "assets/*.png",
-    "assets/real-screenshots/*.png"
+    "assets/real-screenshots/*.png",
+    "docs/CONTRACT-1.0.md",
+    "docs/UPGRADE-1.0.md"
   ],
   "dsh": {
     "bundle": {

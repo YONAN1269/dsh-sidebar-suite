@@ -198,6 +198,17 @@ Since 0.6.1 the writable config lives in DSH home (`~/.dsh/dsh-sidebar-suite/tem
 - 浮层定位依赖 `:has()`，需要 Chromium 内核。Overlay positioning needs `:has()` (Chromium-based client).
 - 标签页模式整块隐藏工作区区域，区域内其它入口也一并隐藏，这是刻意的「一组一栏」设计。官方默认则相反：两组都不隐藏。Toggle hides the whole workspaces region, which is intentional; the official default hides neither group.
 
+## 1.0 稳定性契约 / Stability contract（1.0.0）
+
+1.0.0 起，插件对自己的公开接口做出承诺：**1.x 系列内不做破坏性变更**。承诺范围只有四类——**配置键**、**`sidebarSuite` 服务**、**`/api/dsh-temp-session.*` 路由**、**`<html>` 上的状态属性子集**；内部 DOM 结构、CSS 类名、内部 `data-dsbs-*` 标记**不在承诺内**（随时可能为修 bug 或改样式调整）。
+
+| 想了解 | 看这里 |
+| --- | --- |
+| 到底承诺了哪些接口、哪些不算 | [docs/CONTRACT-1.0.md](docs/CONTRACT-1.0.md)（中英双语，逐条清单） |
+| 从 0.8.x 怎么升上来 | [docs/UPGRADE-1.0.md](docs/UPGRADE-1.0.md) —— **不用改任何配置**，旧 `mode: a` 自动按 `n` 读取 |
+
+Since 1.0.0 the plugin commits to SemVer: no breaking changes within 1.x. The contract covers four surfaces only — config keys, the `sidebarSuite` service, the temp-session routes, and a small set of `<html>` state attributes. Internal DOM, class names and internal `data-dsbs-*` markers stay free to change. See [docs/CONTRACT-1.0.md](docs/CONTRACT-1.0.md) and [docs/UPGRADE-1.0.md](docs/UPGRADE-1.0.md).
+
 ## 会话列表默认全部展开 / Always-expanded session list（0.2.4）
 
 DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成「**展开其余 N 个会话**」按钮。装了本插件之后这个折叠已经没有意义，所以默认：

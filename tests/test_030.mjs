@@ -134,7 +134,11 @@ function threw(fn) {
 }
 
 // ---- version wiring ------------------------------------------------------
-check('package: version is 0.3.0 or later', /^0\.(3|[4-9])\./.test(pkg.version), pkg.version)
+// Guards against shipping an old 0.0–0.2 build (the era before the 0.3.0
+// deprecation). Compare numerically so 1.0.0 and later majors pass too.
+const verParts = pkg.version.split('.').map((n) => parseInt(n, 10) || 0)
+const versionAtLeast0_3 = verParts[0] > 0 || (verParts[0] === 0 && verParts[1] >= 3)
+check('package: version is 0.3.0 or later', versionAtLeast0_3, pkg.version)
 const embedded = (client.match(/var VERSION = '([^']+)'/) || [])[1]
 check('package: the version the service reports matches package.json', embedded === pkg.version, embedded + ' vs ' + pkg.version)
 // 0.7.3: bumping package.json + client.js but forgetting CHANGELOG used to pass

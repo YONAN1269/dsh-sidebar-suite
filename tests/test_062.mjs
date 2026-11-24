@@ -222,7 +222,11 @@ async function main() {
     /export const inject = \['connection'\]/.test(hostIndex))
   check('D6: temp host exposes its degradation reason in status()',
     /degraded: state\.degraded \|\| undefined/.test(tempHost))
-  check('D7: VERSION is untouched in this milestone', /var VERSION = '0\.8\.11'/.test(client))
+  // M1 deliberately did not bump the version; T03 now ships 1.0.0, so the
+  // durable guard is that the embedded VERSION tracks package.json.
+  check('D7: the embedded VERSION tracks package.json',
+    new RegExp("var VERSION = '" + pkg.version.replace(/\./g, '\\.') + "'").test(client),
+    pkg.version)
 
   // ---- A. sidebar node missing -----------------------------------------
   {
