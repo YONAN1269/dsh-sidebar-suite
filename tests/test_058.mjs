@@ -238,12 +238,12 @@ async function main() {
     await wait(30)
     const before = loop.tempButton && loop.tempButton.title
     check('C1: the tooltip starts from the host count',
-      !!before && /0 active/.test(before), String(before))
+      !!before && /0 个临时会话/.test(before), String(before))
     loop.tempButton.click()
     await wait(60)
     const after = loop.tempButton.title
     check('C2: creating a temp session moves the tooltip count',
-      /1 active/.test(after) && /1 个临时会话/.test(after), String(after))
+      /1 个临时会话/.test(after) && !/active/.test(after), String(after))
   }
 
   // ---- B. right-click reaches the shared menu ----------------------------

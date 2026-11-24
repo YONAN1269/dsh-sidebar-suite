@@ -210,8 +210,8 @@ async function main() {
     /ctx\.inject\(\['remote\.session'\]/.test(SRC))
   check('src: reveal falls back to copying the path',
     /copyText\(target\)/.test(SRC))
-  check('src: tab strip yields to native grouping',
-    /if \(!hasPlugin \|\| nativeTabsAvailable\)/.test(SRC) &&
+  check('src: tab strip yields to native grouping (but keeps a way back for an active page)',
+    /if \(!hasPlugin \|\| \(nativeTabsAvailable && !activePlugin\)\)/.test(SRC) &&
     /entriesOfSlot\('sidebar\.panellist\.actions'\)/.test(SRC))
   check('src: stale active tab is cleared when native grouping appears',
     /if \(runtime\.activeTab\)/.test(SRC) &&
@@ -274,8 +274,8 @@ async function main() {
     healthy.menuDisposers.length === 0, JSON.stringify(healthy.menuDisposers))
 
   // ---- tab strip yields on native grouping -----------------------------
-  check('tabs: strip is hidden when the host has native grouping',
-    /if \(!hasPlugin \|\| nativeTabsAvailable\)/.test(SRC))
+  check('tabs: strip is hidden when the host has native grouping and no page is active',
+    /if \(!hasPlugin \|\| \(nativeTabsAvailable && !activePlugin\)\)/.test(SRC))
   const legacy = mountClient({ nativeGrouping: false })
   check('tabs: both contexts mount without errors',
     !!legacy.mod && !!healthy.mod)

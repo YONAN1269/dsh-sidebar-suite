@@ -381,8 +381,11 @@ async function main() {
   const tempButton = m.doc.querySelector('[data-dsbs-btn="temp"]')
   check('sidebar: the Temp button is mounted', !!tempButton)
   if (tempButton) {
+    // 0.8.11 — the zh dictionary now owns its count suffix; the old "N active"
+    // half was English leaking into the Chinese UI.
     check('sidebar: the tooltip follows the actions (0 after keep)',
-      String(tempButton.title || '').indexOf('0 active / 0 个临时会话') >= 0,
+      String(tempButton.title || '').indexOf('0 个临时会话') >= 0 &&
+      String(tempButton.title || '').indexOf('active') < 0,
       String(tempButton.title || ''))
     check('sidebar: the tooltip still explains what a temp session is',
       String(tempButton.title || '').indexOf('deleted when you quit') >= 0 ||
@@ -402,7 +405,8 @@ async function main() {
   check('sidebar: the second mount has its Temp button', !!tempButton2)
   if (tempButton2) {
     check('sidebar: the tooltip shows the live count from the list (1)',
-      String(tempButton2.title || '').indexOf('1 active / 1 个临时会话') >= 0,
+      String(tempButton2.title || '').indexOf('1 个临时会话') >= 0 &&
+      String(tempButton2.title || '').indexOf('active') < 0,
       String(tempButton2.title || ''))
   }
   m2.resetStateIdx()
