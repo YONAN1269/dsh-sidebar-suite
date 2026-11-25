@@ -109,7 +109,7 @@ The toolbar is one segmented control: the three mutually exclusive layouts share
 0.8.3 起，侧栏折叠成 56px 图标条（浏览器版 / macOS 版）时会保留**一枚**菜单按钮，把被宽度挤掉的操作接回来：控制栏整条收起，菜单里是三种布局 + 新建临时会话。选完面板立即关闭；侧栏展开时（≥100px）这枚按钮不出现，所以宽栏不会多一套重复入口。**Windows 桌面版折叠后侧栏宽度是 0（宿主不保留图标条），这枚菜单不会出现**，标题栏上的按钮仍是展开/收起入口；展开后的宽度由宿主决定，可拖 264–420px，这一段由 `data-dsbs-narrow` 负责图标/文字切换。100–170px 只在浏览器抽屉式侧栏（窗口约 150–220px）里可能出现，此时菜单只放「新建临时会话」，不与仍在的控制栏重复。插件页签占列时它也隐藏，页签条仍是唯一退出口。
 Since 0.8.3, a collapsed 56px icon rail (browser and macOS builds) keeps **one** menu button that takes over whatever the width pushed out: the toolbar is gone, so the panel offers the three layouts plus the temporary session. The panel closes as soon as you pick; an expanded column (≥100px) never shows this button, so no duplicate control appears. **The Windows desktop build collapses the sidebar to 0px — the host keeps no icon rail, so this menu does not appear there**; the caption-row toggle remains the open/close entry. Expanded width is host-owned and draggable from 264 to 420px, where `data-dsbs-narrow` switches between icons and labels. The 100–170px band only occurs in the browser drawer (window roughly 150–220px wide); there the panel carries the temp action alone rather than repeating the toolbar.
 
-## 三段式页面切换：对话 / DeepSeek Chat / API（1.1.1）
+## 三段式页面切换：对话 / DeepSeek Chat / API（1.1.2）
 
 侧栏顶部品牌行右侧新增一个紧凑三段开关：`对话 · Chat · API`，嵌在 `deepseek HARNESS` 字标与展开按钮之间的空档里，不额外占一整行高度。开关可见时品牌字标缩到 78%，隐藏时恢复原尺寸。
 
@@ -121,7 +121,7 @@ Since 0.8.3, a collapsed 56px icon rail (browser and macOS builds) keeps **one**
 
 这条开关只在**桌面版、宽侧栏、没有第三方页签占列、且 `dsh-deepseek-chat` 不在 CHAT 模式**时出现；折叠图标条、窄栏、网页版没有桌面 guest 桥时开关隐藏，品牌字标同时恢复原尺寸。新增的 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由需要**彻底退出 DSH 再打开**才会注册，只热重载客户端不够。
 
-### Three-page switch: Agent / DeepSeek Chat / API (1.1.1)
+### Three-page switch: Agent / DeepSeek Chat / API (1.1.2)
 
 A compact segmented pill sits in the sidebar brand row, between the `deepseek HARNESS` wordmark and the panel toggle, and switches the main column between the current agent conversation, the free `chat.deepseek.com` site, and the `platform.deepseek.com` API console. The wordmark is zoomed to 78% while the pill is visible and restored when it hides. The sites are native DSH `webview` guests, not iframes (both send `frame-ancestors 'none'`). Small login-key snapshots (`userToken`, `__appKit_userInfo`, `deepseek-device-id:*`) are stored through `ctx.credentials` (or a 0600 file under `~/.dsh` when no credential provider exists) and re-injected on the next launch. A 1.5-second poll captures the token even when DeepSeek's QR login finishes without a navigation event, and a `{"value":null}` wrapper left by the signed-out page is no longer mistaken for a live token. **localStorage only, no cookies**; both Chat and the API console were verified to stay signed in after a full DSH restart. The pill appears only on the desktop build, in a wide column, with no third-party tab owning the sidebar and with `dsh-deepseek-chat` not in CHAT mode; when it hides, the wordmark returns to full size. Fully quit and reopen DSH once so the three new host routes register.
 
