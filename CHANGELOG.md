@@ -1,12 +1,28 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`、`0.8.8`、`0.8.9`、`0.8.10`、`0.8.11`、`1.0.0`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`、`0.8.8`、`0.8.9`、`0.8.10`、`0.8.11`、`1.1.0`）。
+> `1.0.0` 是本地稳定版基线，未单独上架 npm；它的契约与兜底改动随本次 `1.1.0` 一起发布。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
 > `0.2.0`、`0.2.1`、`0.2.2`、`0.2.3` 是开发过程中的本地迭代号，**从未单独发布**；它们的功能一次性随 `0.2.4` 上线，所以在下面合并记录。
 >
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
+
+## 1.1.0 — 三段式页面切换：对话 / DeepSeek Chat / API（2026-11-25）
+
+侧栏顶部品牌行右侧新增一个紧凑的 `对话 · Chat · API` 三段开关，塞进 `deepseek HARNESS` 字标与展开按钮之间的空档，不额外占一整行高度；开关可见时字标缩到 78%，隐藏后恢复。它用来切换**主内容区**（左侧栏右边那块 Conversation 所在的大区域），不是 DSH 右侧栏：右侧栏没有“对话”页签类型，硬塞会变成第二套导航。
+
+- **三个页面都是宿主自己的 `main` 面板**：`dsbs-deepseek-chat` / `dsbs-deepseek-api` 通过 `ctx.slots.inject('main')` 注册，`ctx.layout.selectPanel(id)` 切换；`对话` 调 `selectPanel(null)` 回到当前会话。点会话、开 Plugins 等宿主导航会自然切回对话，开关跟随 `panelInfo` 高亮，不跟宿主抢方向。
+- **网页不是 iframe**：`chat.deepseek.com` 与 `platform.deepseek.com` 都返回 `frame-ancestors 'none'`，无法嵌入。两个页面内嵌 DSH 桌面端的原生 `webview`，通过 `window.dshDesktop.browser.acquire(storageKey)` 取得 lease 与 partition，地址先固定为 `about:blank#<lease>` 以通过主进程 `will-attach-webview` 的校验；元素挂载后再 `loadURL()` 到真实站点（与 `dsh-deepseek-chat` 的做法一致），`about:blank` 的 `dom-ready` 不算页面就绪。
+- **登录状态保持**：guest partition 是进程内存级的，跨应用重启必丢。插件把网页 localStorage 里的小体积登录键值（单值 ≤16KB、总计 ≤64KB、最多 64 键）快照到 `ctx.credentials` 的 `dsh-sidebar-suite/web-login-chat|api` grant record；没有 credentials provider 时回落到 `~/.dsh/dsh-sidebar-suite/web-login.json`（0600）。每次运行每页只恢复一次：`dom-ready` 后读快照，若当前没有 token 就注入并 `reload()`；登录成功后延迟抓取，检测到主动登出则清除。**只镜像 localStorage，不保存 cookie**，所以 API 控制台若使用 HttpOnly cookie 会话，跨重启仍可能要重登。
+- **新宿主路由 3 条**：`/api/dsh-sidebar-suite.web-login-load|save|clear`，写队列串行化，错误信息不泄露 token。**必须彻底退出 DSH 再打开**才会注册；只热重载客户端不够。
+- **显示条件**：桌面版 + 宽侧栏 + 无第三方页签占列 + `dsh-deepseek-chat` 不在 CHAT 模式。折叠图标条、窄栏、网页版（无 `window.dshDesktop.browser`）整行隐藏；主面板尚未注册时行隐藏并禁用，不画“点了没反应”的按钮。
+- **修复（实机反馈）**：首版在 React effect 里直接 `loadURL()`，Electron 报 `The WebView must be attached to the DOM and the dom-ready event emitted before this method can be called.`。改为等 `about:blank` 的 `dom-ready`，或 `getURL()` 已可读（事件早于 effect 触发）时再导航；同时把加载遮罩的 `hidden` 从空字符串改成布尔值，避免页面已 `ready` 但“正在连接 DeepSeek…”盖住真实网页。
+- **修复**：页面条初版按 `nextElementSibling` 紧贴布局条插入，和页签条/窄栏菜单的注入器互相搬节点，触发 observer 反馈循环（`test_033` 抓到 124 次根节点变更）。改为**插在控制条内部（`data-dsbs-seg` 之后、分隔线之前），只插一次，已挂载就不再移动**；顺序由插入位置决定，不再依赖 CSS `order`。随后按实机反馈把整条独立行收进控制条同一行，减少约 30px 垂直占用；最终版再移到品牌行，控制条恢复成纯布局胶囊。
+- **品牌行收口**：按 `[class*="logoRow"]` 语义后缀定位宿主品牌行（不硬编码 CSS-module 哈希），把页面条插在品牌与 `[data-sidebar-toggle]` 之间；可见期间给品牌元素加 `zoom:.78`，隐藏时摘掉。`test_064` 与新布局同步，`test_032` 的“行内不塞子节点”守卫仍然通过。
+- **测试**：新增 `tests/test_064.mjs`（46 条断言），覆盖三按钮 DOM/aria、点击调用 `selectPanel`、`panelInfo` 外部同步、第三方页签隐藏、无桌面桥隐藏、品牌行落位、快照校验与 credential 存取；`npm test` 全绿（43 个套件）。
+- `lib/client.js` 的 `VERSION` 与 `package.json` 同步到 1.1.0；`files` 与 `check` 脚本纳入 `lib/web-login-host.mjs`。
 
 ## 1.0.0 — 稳态契约版：为未知宿主兜底，并把承诺写死（2026-11-24）
 

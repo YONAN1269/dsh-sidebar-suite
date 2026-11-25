@@ -109,6 +109,22 @@ The toolbar is one segmented control: the three mutually exclusive layouts share
 0.8.3 起，侧栏折叠成 56px 图标条（浏览器版 / macOS 版）时会保留**一枚**菜单按钮，把被宽度挤掉的操作接回来：控制栏整条收起，菜单里是三种布局 + 新建临时会话。选完面板立即关闭；侧栏展开时（≥100px）这枚按钮不出现，所以宽栏不会多一套重复入口。**Windows 桌面版折叠后侧栏宽度是 0（宿主不保留图标条），这枚菜单不会出现**，标题栏上的按钮仍是展开/收起入口；展开后的宽度由宿主决定，可拖 264–420px，这一段由 `data-dsbs-narrow` 负责图标/文字切换。100–170px 只在浏览器抽屉式侧栏（窗口约 150–220px）里可能出现，此时菜单只放「新建临时会话」，不与仍在的控制栏重复。插件页签占列时它也隐藏，页签条仍是唯一退出口。
 Since 0.8.3, a collapsed 56px icon rail (browser and macOS builds) keeps **one** menu button that takes over whatever the width pushed out: the toolbar is gone, so the panel offers the three layouts plus the temporary session. The panel closes as soon as you pick; an expanded column (≥100px) never shows this button, so no duplicate control appears. **The Windows desktop build collapses the sidebar to 0px — the host keeps no icon rail, so this menu does not appear there**; the caption-row toggle remains the open/close entry. Expanded width is host-owned and draggable from 264 to 420px, where `data-dsbs-narrow` switches between icons and labels. The 100–170px band only occurs in the browser drawer (window roughly 150–220px wide); there the panel carries the temp action alone rather than repeating the toolbar.
 
+## 三段式页面切换：对话 / DeepSeek Chat / API（1.1.0）
+
+侧栏顶部品牌行右侧新增一个紧凑三段开关：`对话 · Chat · API`，嵌在 `deepseek HARNESS` 字标与展开按钮之间的空档里，不额外占一整行高度。开关可见时品牌字标缩到 78%，隐藏时恢复原尺寸。
+
+- **对话** 回到 DSH 当前的 Agent 会话（等价于宿主里的 Conversation 面板）。点会话、开 Plugins、用全局快捷键，都会由宿主自己切回对话，开关跟着高亮，不抢导航。
+- **Chat** 在主内容区打开 `chat.deepseek.com` 的免费网页版。
+- **API** 打开 `platform.deepseek.com` 的 API 控制台。
+
+两个网页不是 iframe（DeepSeek 两个站点都用 CSP `frame-ancestors 'none'` 拒绝被嵌），而是 DSH 桌面端提供的原生 `webview` guest，拥有独立、一次性的会话分区。guest 先以 `about:blank#<lease>` 挂载，通过主进程校验后再 `loadURL()` 到真实站点；`loadURL()` 必须等 `about:blank` 的 `dom-ready`（或 `getURL()` 已可读）之后才调用，否则 Electron 会直接报错。登录状态由插件把网页 localStorage 里的小体积 token 快照下来（优先写 `ctx.credentials` 的 grant record，没有 credentials 时写 `~/.dsh/dsh-sidebar-suite/web-login.json`，权限 0600），下次启动注入后自动 reload。**只镜像 localStorage，不保存 cookie**：Chat 的登录已由 `dsh-deepseek-chat` 验证可跨重启；API 控制台若把会话放在 HttpOnly cookie 里，仍可能需要重新登录。快照不会上传到任何地方。
+
+这条开关只在**桌面版、宽侧栏、没有第三方页签占列、且 `dsh-deepseek-chat` 不在 CHAT 模式**时出现；折叠图标条、窄栏、网页版没有桌面 guest 桥时开关隐藏，品牌字标同时恢复原尺寸。新增的 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由需要**彻底退出 DSH 再打开**才会注册，只热重载客户端不够。
+
+### Three-page switch: Agent / DeepSeek Chat / API (1.1.0)
+
+A compact segmented pill sits in the sidebar brand row, between the `deepseek HARNESS` wordmark and the panel toggle, and switches the main column between the current agent conversation, the free `chat.deepseek.com` site, and the `platform.deepseek.com` API console. The wordmark is zoomed to 78% while the pill is visible and restored when it hides. The sites are native DSH `webview` guests, not iframes (both send `frame-ancestors 'none'`). Small localStorage token snapshots are stored through `ctx.credentials` (or a 0600 file under `~/.dsh` when no credential provider exists) and re-injected on the next launch; **localStorage only, no cookies**, so an API console that keeps its session in an HttpOnly cookie may still ask you to sign in. The pill appears only on the desktop build, in a wide column, with no third-party tab owning the sidebar and with `dsh-deepseek-chat` not in CHAT mode; when it hides, the wordmark returns to full size. Fully quit and reopen DSH once so the three new host routes register.
+
 ## 第三方插件接入：注册自己的页签 / Third-party tabs（0.3.0）
 
 别的插件可以往侧栏注册一页自己的界面。客户端会拿到一个 `sidebarSuite` 服务：

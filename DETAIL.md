@@ -160,7 +160,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 ## 1.0 稳定性契约 / Stability contract（1.0.0）
 
-从 **1.0.0** 起，插件保证 **1.x 系列内不做破坏性变更**。承诺范围只有四类：**配置键**（profile 的 `mode`/`tab`/`showQuickSwitch` + `temp-session-config.txt` 的 11 个键）、**`sidebarSuite` 服务**（`registerTab`/`unregisterTab`/`getTabs`/`activateTab`/`getActiveTab`/`subscribe`/`getLayout`/`version`）、**14 条 `/api/dsh-temp-session.*` 路由**（改状态的只用 POST，响应恒为 `{ok,…}`）、**8 个 `<html>` 状态属性**（`data-dsbs-mode`/`-tab`/`-pop`/`-rail`/`-narrow`/`-ptab`/`-expand-all`/`-temp-mode`）。
+从 **1.0.0** 起，插件保证 **1.x 系列内不做破坏性变更**。承诺范围只有四类：**配置键**（profile 的 `mode`/`tab`/`showQuickSwitch` + `temp-session-config.txt` 的 11 个键）、**`sidebarSuite` 服务**（`registerTab`/`unregisterTab`/`getTabs`/`activateTab`/`getActiveTab`/`subscribe`/`getLayout`/`version`）、**14 条 `/api/dsh-temp-session.*` 路由**（改状态的只用 POST，响应恒为 `{ok,…}`）、**8 个 `<html>` 状态属性**（`data-dsbs-mode`/`-tab`/`-pop`/`-rail`/`-narrow`/`-ptab`/`-expand-all`/`-temp-mode`）。1.1.0 **只追加** 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由和 `data-dsbs-page` 属性，上面四类既有契约不变。
 
 内部 DOM 结构、CSS 类名、其余 `data-dsbs-*` 内部标记、日志逐字文案**都不承诺**——它们随时可能为修 bug 或改样式而变。
 
