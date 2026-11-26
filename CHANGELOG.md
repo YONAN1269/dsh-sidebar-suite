@@ -10,6 +10,14 @@
 
 ---
 
+## 1.1.4 — 修复启动置前在 Windows 前台锁下「只显示、不置前」（2026-11-26）
+
+1.1.3 的 Host 路由能恢复被隐藏 / 最小化的窗口，但启动时 PowerShell 是后台进程，`SetForegroundWindow` 会被 Windows 的前台锁拒绝；`WScript.Shell.AppActivate` 也不保证返回 true。结果就是窗口已经可见，却仍被全屏的豆包盖着。
+
+- Host 脚本在置前阶段临时 `AttachThreadInput` 到当前前台线程，配合 `BringWindowToTop` + `SetForegroundWindow`，完成后解除附加；若仍未到前台，再用 `SwitchToThisWindow`（Alt-Tab 同款）兜底。
+- 返回值改成按**实际 `GetForegroundWindow()` 是否等于目标窗口**判定，而不是只看 `AppActivate` 的布尔值；失败时带 `foreground` 句柄方便排查。
+- 真机重启验证：主窗口句柄 `2491840`，启动后前台窗口为 `梯子搭建 — DeepSeek Harness`（PID `75644`），不再需要手动 Alt-Tab。
+- `npm test` 45 个套件全绿；`test_066` 12 条断言、`test_063` A9a–A9f 均不变；`npm run check` 通过。
 ## 1.1.3 — 启动置前开关：DSH 窗口被全屏应用盖住时自动拉回（2026-11-26）
 
 这次只加一个可选的窗口行为，不改布局、临时会话和登录逻辑。
