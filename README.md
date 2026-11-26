@@ -339,6 +339,12 @@ DSH **没有公开的「删除会话」接口**（我核对过 `app.asar`：`ses
 
 两条路写的是 DSH 数据目录里的同一个文件：详情页开关按行替换（注释、空行、顺序原样保留），Host 半用 `mtime + size` 感知外部改动并递增 `configRevision`；客户端每 2.5–3 秒轮询一次，看到新版本就原地重应用。所以**记事本改完保存，约 3 秒自动生效，不用重启 DSH**；反过来 UI 保存前也会先重新读文件，不会把刚手改的其它行覆盖掉。卡片底部会显示当前的「设置版本」号，方便确认有没有生效。
 
+### 启动置前（1.1.3，仅 Windows）
+
+DSH 的 preload 没有 show / focus / restore 主窗口的 API，所以窗口被全屏应用盖住时，客户端自己拉不回来。详情页「选项」区底部新增「窗口 / Window」小节和 `focusOnLaunch` 开关，**默认关闭**；打开后 DSH 启动完成时执行一次：Host 半用 PowerShell + Win32 找到 DSH 主窗口，`ShowWindow` 恢复、`SetForegroundWindow` 置前，`AppActivate` 兜底。只在启动时做一次，运行中不会反复抢焦点；非 Windows 直接返回不支持，不执行外部命令。
+
+> 这个开关存在插件自己的配置表单里，不在 `temp-session-config.txt`；改它不需要重启，下一次启动生效。It lives in the plugin's own config form, not `temp-session-config.txt`; the next launch applies it.
+
 > 仍然需要重启的只有一件事：**升级插件包本身**（`lib/` 里的客户端代码不会热重载）。
 > The only thing that still needs a restart is upgrading the plugin package itself.
 

@@ -110,6 +110,7 @@ function mount(options = {}) {
   const published = {}
   const focusLog = []
   const delayed = []
+  const fetchCalls = []
 
   // The host New-session row: the legacy Temp button's seat.
   const row = doc.createElement('div')
@@ -199,8 +200,13 @@ function mount(options = {}) {
       setItem: (k, v) => storage.set(k, String(v)),
       removeItem: (k) => storage.delete(k),
     },
-    fetch: async (input) => {
+    fetch: async (input, init) => {
       const url = String((input && input.url) || input || '')
+      fetchCalls.push({
+        url,
+        method: (init && init.method) || (input && input.method) || 'GET',
+        body: (init && init.body) || (input && input.body) || '',
+      })
       if (url.indexOf('dsh-temp-session.status') >= 0) {
         return statusBody === null
           ? new Response('offline', { status: 503 })
@@ -256,7 +262,7 @@ function mount(options = {}) {
 
   return {
     doc, tree, mod, ctx, service: published.sidebarSuite, applyError, warnings,
-    forms, menus, registrations, published, focusLog, delayed, ReactStub, hookValues, hookEffects,
+    forms, menus, registrations, published, focusLog, delayed, ReactStub, hookValues, hookEffects, fetchCalls,
     configComponent: () => {
       const entry = registrations.find((r) => r.spec && r.spec.name === 'plugins.bundle.config')
       return entry ? entry.component : null
@@ -553,6 +559,39 @@ async function main() {
     await settle()
     check('A8c: turning expand-all off removes the rule that hides collapse buttons',
       h.doc.documentElement.getAttribute('data-dsbs-expand-all') !== 'true')
+  }
+
+  // ---- A9 · 1.1.3 window focus switch --------------------------------
+  {
+    const h = mount({ initial: { mode: 'b', tab: 'ext', focusOnLaunch: false } })
+    await settle()
+    const tree = h.renderConfig()
+    const toggle = findAll(tree, (n) => n && n.props && n.props['data-dsbs-focus-window'] !== undefined)[0] || null
+    check('A9a: the window-focus switch is on the settings page', !!toggle)
+    check('A9b: it starts off when the profile says off',
+      !!toggle && toggle.props['aria-pressed'] === 'false' &&
+      findAll(toggle.children, (c) => typeof c === 'string' && c.indexOf('已关闭') >= 0).length > 0)
+    if (toggle) {
+      toggle.props.onClick({ preventDefault() {}, stopPropagation() {} })
+      await settle()
+      check('A9c: clicking it writes focusOnLaunch=true to the config form',
+        h.forms.value().focusOnLaunch === true &&
+        h.forms.calls.some((c) => c.ops.some((op) => op.path[0] === 'focusOnLaunch' && op.value === true)))
+      const after = h.renderConfig()
+      const on = findAll(after, (n) => n && n.props && n.props['data-dsbs-focus-window'] !== undefined)[0] || null
+      check('A9d: the switch paints the saved state',
+        !!on && on.props['aria-pressed'] === 'true' &&
+        findAll(on.children, (c) => typeof c === 'string' && c.indexOf('已开启') >= 0).length > 0)
+      await settle()
+      check('A9e: turning it on asks the host to bring the window forward',
+        h.fetchCalls.some((c) => c.method === 'POST' && c.url.indexOf('dsh-sidebar-suite.focus-window') >= 0))
+    }
+  }
+  {
+    const h = mount({ initial: { mode: 'b', tab: 'ext', focusOnLaunch: true } })
+    await settle()
+    check('A9f: an enabled profile is applied once at startup',
+      h.fetchCalls.some((c) => c.method === 'POST' && c.url.indexOf('dsh-sidebar-suite.focus-window') >= 0))
   }
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')

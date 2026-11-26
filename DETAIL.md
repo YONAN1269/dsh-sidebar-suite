@@ -27,6 +27,7 @@ Each card draws a small diagram of its layout, and the selected one is marked as
 ### 强实用性 / Seriously practical
 
 - **设置项置顶 / Settings first** — 图形化设置被提到详情页最上方，长说明、版本信息、组件列表都排在它后面；打开页面第一眼就能改启动默认布局。The graphical defaults are pinned above the long description, version info and component list.
+- **窗口被盖住能拉回来 / Bring the window back（1.1.3，Windows）** — 详情页「窗口」开关打开后，DSH 启动完成时会把被其他全屏应用盖住的主窗口恢复并置前一次；默认关闭，仅 Windows，运行中不反复抢焦点。The opt-in Window switch restores and foregrounds the main window once after launch when another app covers it; off by default, Windows only, and it never steals focus repeatedly while running.
 - **会话与默认分离 / Session ≠ default** — 侧栏上临时换布局只影响本次会话，不写盘；只有详情页的设置会改默认值。Switching from the sidebar bar is session-only; only this page changes the startup default.
 - **零侵入 / Zero rewrites** — 只往 `<html>` 上写属性、加一条控制栏，绝不重构宿主 DOM，React 重绘后自动重新挂载，也不影响 `dsh-deepseek-chat` 这类别的插件。Only `<html>` attributes and one control bar; the host's markup is never restructured, everything re-resolves after React rebuilds, and other sidebar plugins keep working.
 - **会话不用再点「展开其余」/ No more "Show N more"** — 会话列表默认全部展开，折叠按钮也不再显示；按宿主自己的按钮展开、不改宿主 DOM。`EXPAND_ALL_SESSIONS=off` 可恢复原样。Every session is shown and the host's overflow control is hidden, driven through the host's own button; `EXPAND_ALL_SESSIONS=off` restores DSH's folding.
@@ -160,7 +161,7 @@ For local development, point the same command at this folder or a packed `.tgz`.
 
 ## 1.0 稳定性契约 / Stability contract（1.0.0）
 
-从 **1.0.0** 起，插件保证 **1.x 系列内不做破坏性变更**。承诺范围只有四类：**配置键**（profile 的 `mode`/`tab`/`showQuickSwitch` + `temp-session-config.txt` 的 11 个键）、**`sidebarSuite` 服务**（`registerTab`/`unregisterTab`/`getTabs`/`activateTab`/`getActiveTab`/`subscribe`/`getLayout`/`version`）、**14 条 `/api/dsh-temp-session.*` 路由**（改状态的只用 POST，响应恒为 `{ok,…}`）、**8 个 `<html>` 状态属性**（`data-dsbs-mode`/`-tab`/`-pop`/`-rail`/`-narrow`/`-ptab`/`-expand-all`/`-temp-mode`）。1.1.0 **只追加** 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由和 `data-dsbs-page` 属性，上面四类既有契约不变。1.1.2 只修正登录快照恢复判断（空 `userToken` 包装不再视为已登录），不新增、不删除、不改变任何公开契约。
+从 **1.0.0** 起，插件保证 **1.x 系列内不做破坏性变更**。承诺范围只有四类：**配置键**（profile 的 `mode`/`tab`/`showQuickSwitch` + `temp-session-config.txt` 的 11 个键）、**`sidebarSuite` 服务**（`registerTab`/`unregisterTab`/`getTabs`/`activateTab`/`getActiveTab`/`subscribe`/`getLayout`/`version`）、**14 条 `/api/dsh-temp-session.*` 路由**（改状态的只用 POST，响应恒为 `{ok,…}`）、**8 个 `<html>` 状态属性**（`data-dsbs-mode`/`-tab`/`-pop`/`-rail`/`-narrow`/`-ptab`/`-expand-all`/`-temp-mode`）。1.1.0 **只追加** 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由和 `data-dsbs-page` 属性，上面四类既有契约不变。1.1.2 只修正登录快照恢复判断（空 `userToken` 包装不再视为已登录），不新增、不删除、不改变任何公开契约。1.1.3 **追加** 一条内部 Host 路由 `/api/dsh-sidebar-suite.focus-window`（POST，Windows-only，目标 PID 不可由请求指定）和插件配置键 `focusOnLaunch`（默认 false），原有四类契约不变。
 
 内部 DOM 结构、CSS 类名、其余 `data-dsbs-*` 内部标记、日志逐字文案**都不承诺**——它们随时可能为修 bug 或改样式而变。
 

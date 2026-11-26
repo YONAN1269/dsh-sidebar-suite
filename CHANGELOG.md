@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`、`0.8.8`、`0.8.9`、`0.8.10`、`0.8.11`、`1.1.0`、`1.1.2`）。
+> 版本号以 npm registry **实际发布记录**为准（当前：`0.0.0-stage`、`0.1.3`、`0.2.4`、`0.2.5`、`0.2.6`、`0.2.7`、`0.2.8`、`0.2.9`、`0.3.0`、`0.4.0`、`0.4.1`、`0.5.0`、`0.5.1`、`0.6.0`、`0.6.1`、`0.7.0`、`0.7.1`、`0.7.2`、`0.7.3`、`0.7.4`、`0.7.5`、`0.8.0`、`0.8.1`、`0.8.2`、`0.8.3`、`0.8.4`、`0.8.5`、`0.8.6`、`0.8.7`、`0.8.8`、`0.8.9`、`0.8.10`、`0.8.11`、`1.1.0`、`1.1.2`、`1.1.3`）。
 > `1.0.0` 是本地稳定版基线，未单独上架 npm；它的契约与兜底改动随本次 `1.1.0` 一起发布。
 > `1.1.1` 因 npm registry 的幽灵 staged 版本槽被占用（`npm stage list` 查不到该 stage，但发布返回 `409 Cannot publish over previously staged version "1.1.1"`）未实际上架；`1.1.2` 是同一批代码的正式发布号。
 > ⚠️ **`0.3.0` 已弃用 / deprecated**：它会让 DSH 卡在 `Loading plugins…` 且主窗口不显示（见 0.4.0 章节「修复启动死循环」）。请升级到 `0.5.0` 或更高版本。`0.3.0` hangs DSH on the loading screen; upgrade to 0.5.0 or later.
@@ -9,6 +9,18 @@
 > Versions mirror the npm registry. `0.2.0`–`0.2.3` were local iteration numbers that were never published on their own; all of their features shipped together in `0.2.4`.
 
 ---
+
+## 1.1.3 — 启动置前开关：DSH 窗口被全屏应用盖住时自动拉回（2026-11-26）
+
+这次只加一个可选的窗口行为，不改布局、临时会话和登录逻辑。
+
+- **问题**：DSH 主进程和窗口都活着，但被另一个最大化 / 全屏窗口盖住时，用户看不到侧栏，误以为 DSH 没启动；DSH 的 preload 只暴露 `fileActions`、浏览器 lease、快捷键、更新等能力，**没有 show / focus / restore 主窗口的 API**，客户端无法自己解决。
+- **开关**：插件详情页「选项」区新增「窗口 / Window」小节，开关 `focusOnLaunch`，**默认关闭**，写入插件自己的配置表单（`configForms`），不混进 `temp-session-config.txt`。打开后只在**启动完成时**执行一次：恢复最小化窗口并置前，不在运行中反复抢焦点。
+- **Host 路由**：新增 `POST /api/dsh-sidebar-suite.focus-window`，由 Host 半用 PowerShell + Win32（`ShowWindow(SW_RESTORE/SW_SHOW)`、`SetForegroundWindow`，`WScript.Shell.AppActivate` 兜底）完成客户端做不到的动作。目标 PID 只取 Host 进程的父进程链，**请求体不能指定 PID**；8 秒超时，失败返回 `{ok:false,reason}`，不阻塞插件。
+- **跨平台**：非 Windows 直接返回 `{ok:false,unsupported:true,reason:"windows-only"}`；不执行外部命令。
+- **实测**：用户机器上 DSH 主窗口句柄 `524734`、进程 `1840`，被全屏窗口覆盖时调用脚本返回 `{"ok":true,"pid":1840,"window":524734}`，前台窗口切回 `DeepSeek Harness`。
+- **测试**：新增 `tests/test_066.mjs`（12 条断言）覆盖路由注册、POST-only、跨平台降级、PID 不来自请求、成功/拒绝返回；`tests/test_063.mjs` 增加 A9a–A9f，覆盖开关渲染、写入 `focusOnLaunch`、启动时只执行一次。`npm test` 45 个套件全绿。
+- `lib/client.js` 的 `VERSION` 与 `package.json` 同步到 1.1.3；`files` 与 `check` 脚本纳入 `lib/window-focus-host.mjs`。
 
 ## 1.1.2 — 修复登录快照恢复：空 token 包装被误判成已登录（2026-11-25）
 

@@ -1,6 +1,6 @@
 {
   "name": "dsh-sidebar-suite",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "license": "MIT",
   "author": "Yonan",
   "repository": {
@@ -18,7 +18,7 @@
     "node": ">=20",
     "dsh": ">=0.2.2-rc.1 <0.3.0-0 || >=0.2.3-0 <0.3.0-0"
   },
-  "description": "一款专门针对改进 DSH 左侧栏体验的插件：标签页 / 浮层 / 官方默认三种布局一键切换、三段式页面切换（对话 / DeepSeek Chat / API，登录状态保存在本机）、默认布局在详情页顶部直接设、会话列表默认全展开、「临时会话」开原生会话且默认在退出 DSH 时删除（DELETE_ON_EXIT 默认开；每天定时清理默认关，可在详情页开启并自设时间）、详情页三种反馈入口、临时会话可右键「保留为正式会话」或「立即删除」、全部配置键都有图形开关且改文件免重启 —— 强实用性；界面沿用宿主原生配色、圆角与间距，只加属性与一条控制栏、不重构宿主结构 —— 克制美观。｜A plugin dedicated to the DSH sidebar experience: one-click layouts (toggle, overlay, official default), a three-page switch (Agent / DeepSeek Chat / API with on-device login snapshots), always-expanded sessions, native temp sessions deleted when DSH quits by default (DELETE_ON_EXIT on; daily cleanup off by default and opt-in) in-page settings/feedback, a right-click menu to keep or delete one temp session, a control for every config key and hot-reloaded config edits — seriously practical; native colours, radii and spacing with zero host-DOM rewrites — restrained and good-looking.",
+  "description": "一款专门针对改进 DSH 左侧栏体验的插件：标签页 / 浮层 / 官方默认三种布局一键切换、三段式页面切换（对话 / DeepSeek Chat / API，登录状态保存在本机）、默认布局在详情页顶部直接设、会话列表默认全展开、「临时会话」开原生会话且默认在退出 DSH 时删除（DELETE_ON_EXIT 默认开；每天定时清理默认关，可在详情页开启并自设时间）、详情页三种反馈入口、临时会话可右键「保留为正式会话」或「立即删除」、全部配置键都有图形开关且改文件免重启、Windows 启动时可选择把被其他应用盖住的主窗口恢复并置前 —— 强实用性；界面沿用宿主原生配色、圆角与间距，只加属性与一条控制栏、不重构宿主结构 —— 克制美观。｜A plugin dedicated to the DSH sidebar experience: one-click layouts (toggle, overlay, official default), a three-page switch (Agent / DeepSeek Chat / API with on-device login snapshots), always-expanded sessions, native temp sessions deleted when DSH quits by default (DELETE_ON_EXIT on; daily cleanup off by default and opt-in) in-page settings/feedback, a right-click menu to keep or delete one temp session, a control for every config key and hot-reloaded config edits, plus an opt-in Windows launch switch that restores and foregrounds the main window when another app covers it — seriously practical; native colours, radii and spacing with zero host-DOM rewrites — restrained and good-looking.",
   "keywords": [
     "dsh-plugin",
     "dsh",
@@ -33,8 +33,8 @@
   "scripts": {
     "smoke": "node scripts/smoke-l5.mjs",
     "compat": "node scripts/verify-compat.mjs",
-    "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs && node tests/test_028.mjs && node tests/test_029.mjs && node tests/test_030.mjs && node tests/test_031.mjs && node tests/test_032.mjs && node tests/test_033.mjs && node tests/test_034.mjs && node tests/test_035.mjs && node tests/test_036.mjs && node tests/test_037.mjs && node tests/test_038.mjs && node tests/test_039.mjs && node tests/test_040.mjs && node tests/test_041.mjs && node tests/test_042.mjs && node tests/test_043.mjs && node tests/test_044.mjs && node tests/test_045.mjs && node tests/test_046.mjs && node tests/test_047.mjs && node tests/test_048.mjs && node tests/test_049.mjs && node tests/test_050.mjs && node tests/test_051.mjs && node tests/test_052.mjs && node tests/test_053.mjs && node tests/test_054.mjs && node tests/test_055.mjs && node tests/test_056.mjs && node tests/test_057.mjs && node tests/test_058.mjs && node tests/test_059.mjs && node tests/test_060.mjs && node tests/test_061.mjs && node tests/test_062.mjs && node tests/test_063.mjs && node tests/test_064.mjs && node tests/test_065.mjs",
-    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/temp-session-host.mjs && node --check lib/web-login-host.mjs && node --check scripts/smoke-l5.mjs && node --check scripts/verify-compat.mjs && npm pack --dry-run"
+    "test": "node tests/test_020.mjs && node tests/test_022.mjs && node tests/test_023.mjs && node tests/test_024.mjs && node tests/test_025.mjs && node tests/test_028.mjs && node tests/test_029.mjs && node tests/test_030.mjs && node tests/test_031.mjs && node tests/test_032.mjs && node tests/test_033.mjs && node tests/test_034.mjs && node tests/test_035.mjs && node tests/test_036.mjs && node tests/test_037.mjs && node tests/test_038.mjs && node tests/test_039.mjs && node tests/test_040.mjs && node tests/test_041.mjs && node tests/test_042.mjs && node tests/test_043.mjs && node tests/test_044.mjs && node tests/test_045.mjs && node tests/test_046.mjs && node tests/test_047.mjs && node tests/test_048.mjs && node tests/test_049.mjs && node tests/test_050.mjs && node tests/test_051.mjs && node tests/test_052.mjs && node tests/test_053.mjs && node tests/test_054.mjs && node tests/test_055.mjs && node tests/test_056.mjs && node tests/test_057.mjs && node tests/test_058.mjs && node tests/test_059.mjs && node tests/test_060.mjs && node tests/test_061.mjs && node tests/test_062.mjs && node tests/test_063.mjs && node tests/test_064.mjs && node tests/test_065.mjs && node tests/test_066.mjs",
+    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/temp-session-host.mjs && node --check lib/web-login-host.mjs && node --check lib/window-focus-host.mjs && node --check scripts/smoke-l5.mjs && node --check scripts/verify-compat.mjs && npm pack --dry-run"
   },
   "main": "lib/index.js",
   "exports": {
@@ -51,6 +51,7 @@
     "lib/client.js",
     "lib/temp-session-host.mjs",
     "lib/web-login-host.mjs",
+    "lib/window-focus-host.mjs",
     "temp-session-config.txt",
     "cordis.patch.yml",
     "locale/*.json",
