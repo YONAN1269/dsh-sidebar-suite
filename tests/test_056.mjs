@@ -45,6 +45,7 @@ function findAll(node, pred, out) {
 {
   const HOME = fs.mkdtempSync(path.join(tmpdir(), 'dsbs-056-'))
   process.env.DSH_HOME = HOME
+  try {
   const seedSession = (id, title) => {
     const dir = path.join(HOME, 'sessions', '--proj--', id)
     fs.mkdirSync(dir, { recursive: true })
@@ -97,6 +98,11 @@ function findAll(node, pred, out) {
     !!second && second.title === '', second)
   check('host: ?titles=1 still returns the flat ids list', Array.isArray(titled.ids) && titled.ids.length === 2)
   check('host: ?titles=1 exposes maxKept for the cap line', titled.maxKept === 20, String(titled.maxKept))
+  } finally {
+    process.removeAllListeners('exit')
+    try { fs.rmSync(HOME, { recursive: true, force: true }) }
+    catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
+  }
 }
 
 // ---- Part B: the client half ----------------------------------------------

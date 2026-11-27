@@ -44,6 +44,7 @@ function findAll(node, pred, out) {
 {
   const HOME = fs.mkdtempSync(path.join(tmpdir(), 'dsbs-057-'))
   process.env.DSH_HOME = HOME
+  try {
   const seedSession = (id) => {
     const dir = path.join(HOME, 'sessions', '--proj--', id)
     fs.mkdirSync(dir, { recursive: true })
@@ -87,6 +88,11 @@ function findAll(node, pred, out) {
     again.ok === true && again.kept === 0, JSON.stringify(again))
   const store = JSON.parse(fs.readFileSync(path.join(HOME, 'dsh-sidebar-suite', 'temp-sessions.json'), 'utf8'))
   check('host: the store file reflects the emptied list', Array.isArray(store.sessions) && store.sessions.length === 0)
+  } finally {
+    process.removeAllListeners('exit')
+    try { fs.rmSync(HOME, { recursive: true, force: true }) }
+    catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
+  }
 }
 
 // ---- Part B: the client half ----------------------------------------------
@@ -319,11 +325,20 @@ async function main() {
       text.indexOf('下次定时清理') === 0 && !text.endsWith('off'), text)
   }
 
-  // ---- keep-all action ----------------------------------------------------
+  // ---- keep-all action (PD-13: two-step confirm) --------------------------
   if (keepAllButton) {
     keepAllButton.props.onClick()
     await settle(); await tick()
-    check('detail: keep-all POSTs the dedicated route',
+    check('detail: first click only arms the keep-all button, no POST yet',
+      !m.calls.some((c) => c.method === 'POST' && c.url.indexOf('dsh-temp-session.keep-all') >= 0))
+    m.resetStateIdx()
+    const armedButton = findAll(Component(), (n) => !!(n.props && n.props['data-dsbs-keep-all'] !== undefined))[0]
+    check('detail: armed button shows the click-again confirm hint',
+      !!armedButton && String(armedButton.children[0]).indexOf('再点一次') === 0,
+      armedButton && String(armedButton.children[0]))
+    armedButton.props.onClick()
+    await settle(); await tick()
+    check('detail: second click POSTs the dedicated route',
       m.calls.some((c) => c.method === 'POST' && c.url.indexOf('dsh-temp-session.keep-all') >= 0))
     m.resetStateIdx()
     const after = JSON.stringify(Component())

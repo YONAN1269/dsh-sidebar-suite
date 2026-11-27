@@ -228,9 +228,9 @@ async function main() {
   const healthy = mountClient()
   await settle()
   await settle()
-  check('menu: registers exactly one native contribution',
-    healthy.services.length === 1, String(healthy.services.length))
-  const contribution = healthy.services[0]
+  check('menu: registers the temp and favorite native contributions',
+    healthy.services.length === 2, String(healthy.services.length))
+  const contribution = healthy.services.find((c) => c && c.id === 'dsh-sidebar-suite.temp-session')
   check('menu: contribution id and order are stable',
     contribution && contribution.id === 'dsh-sidebar-suite.temp-session' && contribution.order === 400,
     contribution && contribution.id)
@@ -358,8 +358,8 @@ async function main() {
     owner.teardown()
     const afterFirst = healthy.menuDisposers.length
     owner.teardown()
-    check('menu: teardown unregisters the native contribution exactly once',
-      afterFirst === 1 && healthy.menuDisposers.length === 1,
+    check('menu: teardown unregisters the native contributions exactly once',
+      afterFirst === 2 && healthy.menuDisposers.length === 2,
       JSON.stringify(healthy.menuDisposers))
   }
 

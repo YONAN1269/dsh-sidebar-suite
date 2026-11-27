@@ -356,6 +356,47 @@ async function main() {
     check('the first instance still has its own registry', bye.service.getTabs().length === 1)
   }
 
+  // ==== 10. a stale tabContext.close() keeps the replacement ==============
+  // Re-registering an id is the hot-reload path. The old mount context still
+  // exists after its panel is disposed; closing it later must not remove the
+  // record that now owns the same id.
+  {
+    const hot = buildClient()
+    await settle()
+    const contexts = []
+    hot.service.registerTab({
+      id: 'same',
+      title: 'v1',
+      mount(container, tab) {
+        contexts.push(tab)
+        container.textContent = 'v1'
+      },
+    })
+    await settle()
+    hot.service.activateTab('same')
+    await settle()
+    check('hot reload: the first record mounted', contexts.length === 1)
+    const oldContext = contexts[0]
+
+    hot.service.registerTab({
+      id: 'same',
+      title: 'v2',
+      mount(container) {
+        container.textContent = 'v2'
+      },
+    })
+    await settle()
+    oldContext.close()
+    await settle()
+
+    check('hot reload: an old tabContext.close() keeps the new same-id record',
+      hot.service.getTabs().some((t) => t.id === 'same' && t.title === 'v2'),
+      JSON.stringify(hot.service.getTabs()))
+    check('hot reload: the new panel survives the stale close',
+      /v2/.test(hot.tree.root.querySelector('[data-dsbs-tabpanel="same"]').textContent))
+    hot.service.unregisterTab('same')
+  }
+
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail > 0) process.exitCode = 1
 }

@@ -149,7 +149,11 @@ try {
   if (host) {
     try { host.state.tracked = [] } catch (error) { void error }
   }
-  try { rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
+  // The host's real process 'exit' quit hook rewrites HOME on exit; detach it
+  // before deleting the fixture dir so nothing recreates it after cleanup.
+  process.removeAllListeners('exit')
+  try { rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')

@@ -7,11 +7,19 @@
 // two design goals (practical + good-looking). This test also guards the
 // package wiring that lets the Host actually read those files after publish.
 import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 // Relocatable: <repo>/tests -> <repo>. No machine-specific paths (CI-safe).
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
 const read = (p) => readFileSync(ROOT + '/' + p, 'utf8')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
 
 let pass = 0
 let fail = 0
@@ -33,14 +41,20 @@ const client = read('lib/client.js')
 // ---- the one-liner the Host shows above the detail sections ---------------
 for (const [lang, loc] of [['zh', zh], ['en', en]]) {
   const one = loc.meta && loc.meta.description
-  check(`locale/${lang}: description parses as a string`, typeof one === 'string')
-  check(`locale/${lang}: names the sidebar focus`, typeof one === 'string' && one.includes(FOCUS))
-  check(`locale/${lang}: English half names the same focus`, typeof one === 'string' && one.includes('A plugin dedicated to a better DSH sidebar'))
+  check(`locale/${lang}: description parses as a non-empty string`, typeof one === 'string' && one.trim().length > 0)
+  check(`locale/${lang}: description drops the old "9 项" count`, typeof one === 'string' && !one.includes('9 项'))
+  if (lang === 'zh') {
+    check('locale/zh: description names every config key', typeof one === 'string' && one.includes('全部配置键'))
+  } else {
+    check('locale/en: description opens in English', typeof one === 'string' && /^[A-Za-z]/.test(one.trim()))
+    check('locale/en: description names the per-key control', typeof one === 'string' && one.includes('a control for every config key'))
+  }
   check(`locale/${lang}: states practicality`, typeof one === 'string' && one.includes('强实用性') && one.includes('seriously practical'))
   check(`locale/${lang}: states visual quality`, typeof one === 'string' && one.includes('好看') && one.includes('good-looking'))
   check(`locale/${lang}: detail document still wired`, loc.meta.detail === 'DETAIL.md')
 }
-check('locale: zh and en one-liners stay identical', zh.meta.description === en.meta.description)
+check('locale: zh and en expose the same meta keys',
+  JSON.stringify(Object.keys(zh.meta || {}).sort()) === JSON.stringify(Object.keys(en.meta || {}).sort()))
 
 // ---- the long detail document --------------------------------------------
 check('DETAIL: opening blockquote declares the positioning', detail.slice(0, 1200).includes('**这是一款专门针对改进 DSH 左侧栏体验的插件。**'))
@@ -82,7 +96,9 @@ check('package: ships the step-by-step guide in the tarball', pkg.files.includes
 check('package: ships the changelog in the tarball', pkg.files.includes('CHANGELOG.md'))
 check('package: ships screenshots.json in the tarball', pkg.files.includes('screenshots.json'))
 check('package: ships the PNG icon and screenshot images', pkg.files.includes('assets/*.png') && pkg.files.includes('assets/real-screenshots/*.png'))
-check('package: exposes one-command npm test', /tests\/test_020\.mjs/.test((pkg.scripts || {}).test || ''))
+check('package: one-command npm test runs the runner and discovers the 0.2.0 suite',
+  /scripts\/run-tests\.mjs/.test((pkg.scripts || {}).test || '') &&
+  suiteList().includes('test_020.mjs'))
 check('package: exports the detail document', pkg.exports['./DETAIL.md'] === './DETAIL.md')
 check('package: exports the locale files', pkg.exports['./locale/*.json'] === './locale/*.json')
 check('package: ships the detail document in the tarball', pkg.files.includes('DETAIL.md'))

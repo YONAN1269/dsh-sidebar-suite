@@ -111,6 +111,15 @@ function mount(options = {}) {
   const focusLog = []
   const delayed = []
   const fetchCalls = []
+  const intervals = []
+  let configFailures = opts.configFailures || 0
+  const controlledInterval = (fn, ms) => {
+    if (opts.manualIntervals) {
+      intervals.push({ fn, ms })
+      return { unref() {} }
+    }
+    return sbInterval(fn, ms)
+  }
 
   // The host New-session row: the legacy Temp button's seat.
   const row = doc.createElement('div')
@@ -181,12 +190,18 @@ function mount(options = {}) {
   }
   const registrations = []
 
+  // 1.1.4 — probes for the two "quiet" guarantees: the expand sweep must not
+  // run inside every sync, and the synthetic resize must be gated + coalesced.
+  const probes = { resize: 0, overflowScans: 0 }
   const sandbox = {
     window: {
       __ModuleLoader__: { load(entry) { sandbox.__entry = entry } },
       getComputedStyle: () => ({ position: 'static', display: 'block' }),
-      addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
-      setTimeout: controlledTimeout, clearTimeout, setInterval: sbInterval, clearInterval,
+      addEventListener() {}, removeEventListener() {},
+      dispatchEvent(event) {
+        if (event && event.type === 'resize') probes.resize += 1
+      },
+      setTimeout: controlledTimeout, clearTimeout, setInterval: controlledInterval, clearInterval,
       open() { return null },
       innerWidth: 1280, innerHeight: 800,
     },
@@ -208,12 +223,26 @@ function mount(options = {}) {
         body: (init && init.body) || (input && input.body) || '',
       })
       if (url.indexOf('dsh-temp-session.status') >= 0) {
+        if (opts.statusPending) return new Promise(() => {})
         return statusBody === null
           ? new Response('offline', { status: 503 })
           : new Response(JSON.stringify(statusBody), { status: 200 })
       }
       if (url.indexOf('dsh-temp-session.list') >= 0) {
+        if (opts.listPending) return new Promise(() => {})
         return new Response(JSON.stringify({ ok: true, ids: opts.listIds || [] }), { status: 200 })
+      }
+      if (url.indexOf('dsh-temp-session.config') >= 0) {
+        if (configFailures > 0) {
+          configFailures -= 1
+          return new Response('offline', { status: 503 })
+        }
+        return new Response(JSON.stringify(Object.assign({ ok: true }, opts.configBody || {})), { status: 200 })
+      }
+      if (url.indexOf('dsh-sidebar-suite.update-check') >= 0) {
+        return new Response(JSON.stringify({
+          ok: true, current: '1.1.4', latest: '1.1.5', updateAvailable: true,
+        }), { status: 200 })
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 })
     },
@@ -222,7 +251,7 @@ function mount(options = {}) {
     KeyboardEvent: class { constructor(type, init) { this.type = type; Object.assign(this, init) } },
     MouseEvent: class { constructor(type, init) { this.type = type; Object.assign(this, init) } },
     MutationObserver: MutationObserverStub, ResizeObserver: ResizeObserverStub,
-    setTimeout: controlledTimeout, clearTimeout, setInterval: sbInterval, clearInterval,
+    setTimeout: controlledTimeout, clearTimeout, setInterval: controlledInterval, clearInterval,
     requestAnimationFrame: (cb) => sbTimeout(cb, 0),
     cancelAnimationFrame: (id) => clearTimeout(id),
     console: { log() {}, info() {}, debug() {}, warn: (...a) => warnings.push(a.map(String).join(' ')), error() {} },
@@ -263,6 +292,8 @@ function mount(options = {}) {
   return {
     doc, tree, mod, ctx, service: published.sidebarSuite, applyError, warnings,
     forms, menus, registrations, published, focusLog, delayed, ReactStub, hookValues, hookEffects, fetchCalls,
+    intervals,
+    probes,
     configComponent: () => {
       const entry = registrations.find((r) => r.spec && r.spec.name === 'plugins.bundle.config')
       return entry ? entry.component : null
@@ -315,6 +346,115 @@ async function main() {
     check('A1d: two refused writes leave a toast, not a silent dead click',
       !!toast && String(toast.textContent || '').length > 0,
       toast ? String(toast.textContent) : 'no toast')
+    check('A1h: a refused tab write rolls the visible group back to the last persisted tab',
+      forms.doc.documentElement.getAttribute('data-dsbs-tab') === 'ws',
+      'html tab=' + forms.doc.documentElement.getAttribute('data-dsbs-tab'))
+    check('A1i: a refused tab write leaves the stored tab on the last persisted value',
+      forms.forms.value().tab === 'ws',
+      'stored tab=' + forms.forms.value().tab)
+
+    // A successful write becomes the new rollback target. Turning the next
+    // flip back must restore ext (the accepted value), not ws (the startup
+    // value A1h/A1i started from).
+    forms.forms.state.refuseNext = 0
+    forms.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+    await new Promise((r) => setTimeout(r, 500))
+    await settle()
+    check('A1j: the accepted flip becomes the new persisted tab',
+      forms.forms.value().tab === 'ext',
+      'stored tab=' + forms.forms.value().tab)
+    forms.forms.state.refuseNext = 2
+    forms.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+    await new Promise((r) => setTimeout(r, 900))
+    await settle()
+    check('A1k: a later refusal rolls back to the last accepted tab, not the startup tab',
+      forms.doc.documentElement.getAttribute('data-dsbs-tab') === 'ext'
+      && forms.forms.value().tab === 'ext',
+      'html tab=' + forms.doc.documentElement.getAttribute('data-dsbs-tab')
+        + ', stored tab=' + forms.forms.value().tab)
+  }
+
+  // ---- A1e · a ⇄ burst costs one profile write, not one per click -------
+  // 1.1.4: the flip used to call setField('tab') directly, so six quick
+  // clicks meant six YAML rewrites queued behind each other. The view still
+  // has to follow every click; the write collapses to a leading + trailing
+  // pair, and the profile must end on the group the user last asked for.
+  {
+    const h = mount({ initial: { tab: 'ext' } })
+    await settle()
+    const before = h.forms.calls.length
+    for (let i = 0; i < 6; i += 1) {
+      h.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+      await new Promise((r) => setTimeout(r, 40))
+    }
+    await new Promise((r) => setTimeout(r, 500))
+    await settle()
+    const writes = h.forms.calls.length - before
+    check('A1e: six rapid flips cost at most a leading and a trailing write',
+      writes <= 3, 'writes=' + writes)
+    check('A1f: the last flip is what got persisted', h.forms.value().tab === 'ext',
+      'stored tab=' + h.forms.value().tab)
+    check('A1g: the burst ends on the group the user last clicked',
+      h.doc.documentElement.getAttribute('data-dsbs-tab') === 'ext',
+      'html tab=' + h.doc.documentElement.getAttribute('data-dsbs-tab'))
+  }
+
+  // ---- A3 · a repaint must not sweep the session list (1.1.4) -----------
+  // The expand pass is a whole-document query plus one host click per folded
+  // group, and every click re-renders the tree. It used to run inside every
+  // sync(), so a repaint caused by nothing but a mode switch paid for a full
+  // list sweep. Now it runs only when the tree changed or a group was just
+  // revealed -- and even then off the frame, so the reveal itself is cheap.
+  {
+    const h = mount()
+    await settle()
+    await new Promise((r) => setTimeout(r, 400))
+    const originalQuery = h.doc.querySelectorAll.bind(h.doc)
+    h.doc.querySelectorAll = (selector) => {
+      if (String(selector).indexOf('overflow:') >= 0) h.probes.overflowScans += 1
+      return originalQuery(selector)
+    }
+    const before = h.probes.overflowScans
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="mode-c"]')
+    await settle()
+    check('A10a: a mode switch repaints without sweeping the session list',
+      h.probes.overflowScans === before, 'scans=' + (h.probes.overflowScans - before))
+    // ...but the group that just became visible still gets its sweep, just
+    // later: "已展开的分组不再折成 5 条" must survive the optimisation.
+    await new Promise((r) => setTimeout(r, 250))
+    await settle()
+    check('A10b: the revealed group still gets its deferred sweep',
+      h.probes.overflowScans > before, 'scans=' + (h.probes.overflowScans - before))
+    h.doc.querySelectorAll = originalQuery
+  }
+
+  // ---- A4 · the synthetic resize is gated to overlays, coalesced --------
+  // It used to fire on every group that became visible: a fake `resize` for the
+  // whole app, so every other plugin listening re-measured (and the host
+  // recalced its layout) with nothing on screen to justify it.
+  {
+    const h = mount({ initial: { mode: 'b', tab: 'ext' } })
+    await settle()
+    await new Promise((r) => setTimeout(r, 200))
+    const before = h.probes.resize
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+    await settle()
+    await new Promise((r) => setTimeout(r, 150))
+    await settle()
+    check('A10c: a plain tab flip broadcasts no synthetic resize',
+      h.probes.resize === before, 'resize=' + (h.probes.resize - before))
+  }
+  {
+    const h = mount({ initial: { mode: 'c', tab: 'ws' } })
+    await settle()
+    await new Promise((r) => setTimeout(r, 200))
+    const before = h.probes.resize
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="pop"]')
+    await settle()
+    await new Promise((r) => setTimeout(r, 150))
+    await settle()
+    check('A10d: an open overlay still gets its single re-measure notice',
+      h.probes.resize === before + 1, 'resize=' + (h.probes.resize - before))
   }
 
   // ---- A2 · overlay dismissal: host-rebuilt rows and Esc focus ----------
@@ -531,6 +671,82 @@ async function main() {
     }
   }
 
+  // ---- A12 · a failed first settings read is retried by the poll ----------
+  // The 2.5s interval used to be gated behind `loaded`, so one 503 on page
+  // open stopped every later attempt until the user left and re-entered the
+  // page. The next tick must read again and render the policy rows.
+  {
+    const h = mount({ manualIntervals: true, configFailures: 1 })
+    await settle()
+    h.renderConfig()
+    for (const fn of h.hookEffects) fn()
+    await new Promise((r) => setTimeout(r, 100))
+    await settle()
+
+    const firstTree = h.renderConfig()
+    const unavailable = findAll(firstTree, (n) => n && n.props &&
+      findAll(n.children, (c) => typeof c === 'string' && c.indexOf('读取不到清理设置') >= 0).length > 0)
+    check('A12a: a failed first config read paints the unavailable state', unavailable.length > 0)
+    const before = h.fetchCalls.filter((c) => c.method === 'GET' && c.url.indexOf('dsh-temp-session.config') >= 0).length
+    check('A12b: the first read really failed', before === 1, 'config GETs=' + before)
+
+    const timer = h.intervals.find((i) => i.ms === 2500)
+    check('A12c: the settings poll was installed', !!timer)
+    if (timer) {
+      timer.fn()
+      await new Promise((r) => setTimeout(r, 100))
+      await settle()
+    }
+    const afterTree = h.renderConfig()
+    const recovered = findAll(afterTree, (n) => n && n.props &&
+      findAll(n.children, (c) => typeof c === 'string' && c.indexOf('会话默认全展开') >= 0).length > 0)
+    check('A12d: the next poll retries and recovers the policy rows', recovered.length > 0)
+    check('A12e: the retry issued a second config request',
+      h.fetchCalls.filter((c) => c.method === 'GET' && c.url.indexOf('dsh-temp-session.config') >= 0).length >= 2)
+  }
+
+  // ---- A12b · a slow list request must not stack every 2.5s tick --------
+  // The initial temp list load is still running; the poll must skip while it
+  // is in flight, and neither tick may start a second list request.
+  {
+    const h = mount({ manualIntervals: true, listPending: true })
+    await settle()
+    h.renderConfig()
+    for (const fn of h.hookEffects) fn()
+    await new Promise((r) => setTimeout(r, 100))
+    await settle()
+
+    const listCalls = () => h.fetchCalls.filter((c) => c.url.indexOf('dsh-temp-session.list') >= 0).length
+    const before = listCalls()
+    check('A12f: the initial temp list request is in flight', before >= 1,
+      'list requests=' + before)
+    const timer = h.intervals.find((i) => i.ms === 2500)
+    if (timer) {
+      timer.fn()
+      await settle()
+      timer.fn()
+      await settle()
+    }
+    check('A12g: a slow list poll does not stack requests', listCalls() === before,
+      'before=' + before + ' after=' + listCalls())
+  }
+
+  // ---- A12c · the ordinary diagnostics read has a watchdog -------------
+  // A status request that never settles used to leave the health badge on
+  // "checking" until the page was remounted. The 10s timer must be armed for
+  // the non-force read too, not only for the Recheck button.
+  {
+    const h = mount({ statusPending: true })
+    await settle()
+    h.renderConfig()
+    for (const fn of h.hookEffects) fn()
+    await new Promise((r) => setTimeout(r, 100))
+    await settle()
+    check('A12h: a hanging diagnostics read arms a 10s watchdog',
+      h.delayed.some((d) => d.ms === 10000),
+      'timers=' + h.delayed.map((d) => d.ms).join(','))
+  }
+
   // ---- A8 · expand-all: switch is honoured, teardown clears the flag ----
   {
     const h = mount()
@@ -592,6 +808,37 @@ async function main() {
     await settle()
     check('A9f: an enabled profile is applied once at startup',
       h.fetchCalls.some((c) => c.method === 'POST' && c.url.indexOf('dsh-sidebar-suite.focus-window') >= 0))
+  }
+
+  // ---- A10 · 1.1.5 update check + manual focus test ---------------------
+  {
+    const h = mount({ initial: { mode: 'b', tab: 'ext', focusOnLaunch: false } })
+    await settle()
+    let tree = h.renderConfig()
+    const updateButton = findAll(tree, (n) => n && n.props && n.props['data-dsbs-update-check'] !== undefined)[0] || null
+    check('A11a: the settings page has an update-check button', !!updateButton)
+    if (updateButton) {
+      updateButton.props.onClick()
+      await settle()
+      tree = h.renderConfig()
+      const resultButton = findAll(tree, (n) => n && n.props && n.props['data-dsbs-update-check'] !== undefined)[0] || null
+      check('A11b: a newer npm version paints the available state',
+        !!resultButton && resultButton.props['data-dsbs-update-state'] === 'available' &&
+        h.fetchCalls.some((c) => c.method === 'GET' && c.url.indexOf('dsh-sidebar-suite.update-check') >= 0))
+      const copyButton = findAll(tree, (n) => n && n.props && n.props['data-dsbs-update-copy'] !== undefined)[0] || null
+      check('A11c: an update offers the one-line install command', !!copyButton)
+    }
+    const focusButton = findAll(tree, (n) => n && n.props && n.props['data-dsbs-focus-test'] !== undefined)[0] || null
+    check('A11d: the window section has a test-now button', !!focusButton)
+    if (focusButton) {
+      focusButton.props.onClick()
+      await settle()
+      tree = h.renderConfig()
+      const focusResult = findAll(tree, (n) => n && n.props && n.props['data-dsbs-focus-result'] !== undefined)[0] || null
+      check('A11e: a successful focus test reports a visible ok result',
+        !!focusResult && focusResult.props['data-dsbs-focus-result'] === 'ok',
+        focusResult ? String(focusResult.props['data-dsbs-focus-result']) : 'missing')
+    }
   }
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')

@@ -7,6 +7,7 @@
 // the width is overridden here rather than changing the shared stub.
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { El, Doc, buildSidebar, matchSelector, sbTimeout, sbInterval } from './dom-stub.mjs'
@@ -14,6 +15,14 @@ import { El, Doc, buildSidebar, matchSelector, sbTimeout, sbInterval } from './d
 void El; void Doc; void matchSelector
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
+
 const client = fs.readFileSync(ROOT + '/lib/client.js', 'utf8')
 const pkg = JSON.parse(fs.readFileSync(ROOT + '/package.json', 'utf8'))
 const guide = fs.readFileSync(ROOT + '/使用说明.md', 'utf8')
@@ -201,7 +210,9 @@ async function main() {
   check('A0: the rail trigger is icon-only, like every other glyph button',
     /'\[data-dsbs-rail-menu\] > button\{[^']*font-size:0/.test(client) &&
     /'\[data-dsbs-rail-menu\] > button\{[^']*overflow:hidden/.test(client))
-  check('A0: this suite is wired into npm test', /test_055\.mjs/.test(pkg.scripts.test || ''))
+  check('A0: this suite is wired into npm test',
+    /scripts\/run-tests\.mjs/.test(pkg.scripts.test || '') &&
+    suiteList().includes('test_055.mjs'))
   check('A0: the guide explains the rail entry', /图标条/.test(guide) && /侧栏菜单/.test(guide))
   // 0.8.3 shipped the note above as if every build kept a narrow rail. The host
   // collapses to 0px on Windows desktop, so the guide has to say so — otherwise

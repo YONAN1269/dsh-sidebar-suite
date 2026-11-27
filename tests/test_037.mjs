@@ -132,7 +132,9 @@ try {
   check('symlink case skipped (privilege)', true, String(error && error.message))
 }
 
-try { fs.rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
+process.removeAllListeners('exit')
+try { fs.rmSync(HOME, { recursive: true, force: true }) }
+catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')
 process.exit(fail === 0 ? 0 : 1)

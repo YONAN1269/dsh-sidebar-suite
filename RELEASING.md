@@ -22,6 +22,16 @@ npmjs.com 上已登记 Trusted Publisher（`YONAN1269` / `dsh-sidebar-suite` / `
 
 > 注意：npm publish 成功后 registry 可能延迟几十秒~几分钟才落地（`/latest` 端点 CDN 还会再滞后）。**不要重复 publish**（会 409 staged version），轮询 `curl -s https://registry.npmjs.org/dsh-sidebar-suite/latest` 等待即可。
 
+## 本地遗留物（被忽略，可安全删除）
+
+仓库里有一批一次性 / 本地产物，已写进 `.gitignore`：不会进 git 提交，也不会进 npm 包（tarball 以 `package.json` 的 `files` 白名单为准）。清理工作区时可以直接删，需要时脚本会重新生成：
+
+- `_probe/`：本地解包的宿主源码与一次性探测脚本、输出；
+- `_make_release_*.mjs`、`_release_body_*.md`：历次发版时一次性用的打包脚本与 Release 正文，用完即弃；
+- `dist/`：本地 `npm pack` 产出的目录；
+- 旧的 `*.zip` / `*.tgz` 离线包；
+- `*.log`：本地调试日志。
+
 ## 一次性配置（已完成，存档）
 
 ### 迁移前提（2026-11-16 核对）

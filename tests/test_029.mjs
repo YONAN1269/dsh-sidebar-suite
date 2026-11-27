@@ -8,10 +8,18 @@
 // rendered as 22x8 slivers because line-height:0 collapsed the buttons, and a
 // "change layout" button with no glyph at all.
 import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 // Relocatable: <repo>/tests -> <repo>. No machine-specific paths (CI-safe).
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
 const CLIENT = ROOT + '/lib/client.js'
 const pkg = JSON.parse(readFileSync(ROOT + '/package.json', 'utf8'))
 const client = readFileSync(CLIENT, 'utf8')
@@ -107,7 +115,7 @@ check('0.7.3: leaving the rail does not undo a newer layout choice',
 check('0.7.3: getLayout filters activeTab like getActiveTab does',
   /activeTab: runtime\.activeTab && findTab\(runtime\.activeTab\) \? runtime\.activeTab : null/.test(client))
 check('0.7.3: tab.close() unregisters instead of doing nothing when inactive',
-  /close: function \(\) \{\s*unregisterTab\(record\.id\)/.test(client))
+  /close: function \(\) \{\s*unregisterTab\(record\.id, record\)/.test(client))
 check('0.7.3: an out-of-range maxKept is put back, not silently ignored',
   /if \(target\) target\.value = String\(policy\.maxKept\)/.test(client))
 
@@ -149,7 +157,9 @@ const gte = (a, b) => {
   return true
 }
 check('package: version is 0.2.9 or later', gte(pkg.version, '0.2.9'), pkg.version)
-check('package: test chain includes the 0.2.9 suite', /tests\/test_029\.mjs/.test((pkg.scripts || {}).test || ''))
+check('package: the 0.2.9 suite is wired into the runner',
+  /scripts\/run-tests\.mjs/.test((pkg.scripts || {}).test || '') &&
+  suiteList().includes('test_029.mjs'))
 check('docs: changelog records 0.2.9', /## 0\.2\.9/.test(changelog))
 check('docs: changelog spells out the restart requirement', /0\.2\.9[\s\S]{0,800}?托盘退出/.test(changelog))
 check('docs: README describes the toolbar as one control', /分段|segmented/i.test(readme))

@@ -10,6 +10,8 @@
 import fs from 'node:fs'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { buildSidebar, sbTimeout } from './dom-stub.mjs'
 import {
@@ -18,6 +20,9 @@ import {
   webLoginCredentialKey,
   isWebLoginPage,
 } from '../lib/web-login-host.mjs'
+
+const TEST_HOME = fs.mkdtempSync(join(tmpdir(), 'dsbs-login-test-'))
+process.env.DSH_HOME = TEST_HOME
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
 const client = fs.readFileSync(ROOT + '/lib/client.js', 'utf8')
@@ -119,13 +124,29 @@ function buildClient(options = {}) {
   vm.createContext(sandbox)
   vm.runInContext(client, sandbox, { filename: 'client.js' })
 
+  // Minimal usable useState: the setter writes back into a per-hook closure
+  // slot, so a later render reads the updated value. Not full React semantics
+  // (no batching, no subscription), but enough to drive
+  // "click -> state changes -> re-render -> new value shows" in a test.
+  // resetHooks() reopens the slot cursor before a manual re-render, mirroring
+  // how React replays hooks in the same order on each render.
+  const stubStates = []
+  let hookIdx = 0
   const ReactStub = {
     createElement: () => null,
-    useState: (value) => [value, () => {}],
+    useState(initial) {
+      const i = hookIdx++
+      if (stubStates[i] === undefined) stubStates[i] = typeof initial === 'function' ? initial() : initial
+      const setter = (next) => {
+        stubStates[i] = typeof next === 'function' ? next(stubStates[i]) : next
+      }
+      return [stubStates[i], setter]
+    },
     useRef: (value) => ({ current: value }),
     useEffect() {},
     Fragment: 'Fragment',
   }
+  const resetHooks = () => { hookIdx = 0 }
   const mod = sandbox.__entry.factory(() => ReactStub)
   const published = {}
   const ctx = {
@@ -338,6 +359,132 @@ async function main() {
     check('H11: clear removes the grant', cleared.ok && !records.has('dsh-sidebar-suite/web-login-chat'))
     check('H12: a cleared page reads as not found', (await host.readPage('chat')).found === false)
 
+    // H14 (CH-06): when the credential store cannot write, the entries must
+    // never land in the plaintext file; only a tombstone is written and the
+    // failure comes back as the enumerated reason.
+    const fallbackRecords = new Map()
+    const oldKey = 'dsh-sidebar-suite/web-login-chat'
+    fallbackRecords.set(oldKey, {
+      kind: 'grant',
+      payload: { version: 1, page: 'chat', entries: { userToken: 'old-token' }, savedAt: '2020-01-01T00:00:00.000Z' },
+    })
+    const failingWriter = {
+      async readRecord(key) { return fallbackRecords.get(key) || null },
+      async modifyRecord() { throw new Error('credential write failed') },
+      async deleteRecord() {},
+    }
+    const fallbackHost = createWebLoginHost({ get(name) { return name === 'credentials' ? failingWriter : null } })
+    const fallbackSave = await fallbackHost.savePage('chat', { userToken: 'new-token' })
+    const fallbackRead = await fallbackHost.readPage('chat')
+    check('H14: a credential write failure reports credentials-unavailable',
+      fallbackSave.ok === false && fallbackSave.reason === 'credentials-unavailable'
+        && typeof fallbackSave.savedAt === 'string',
+      JSON.stringify(fallbackSave))
+    const fallbackStore = JSON.parse(fs.readFileSync(fallbackHost.storePath(), 'utf8'))
+    const fallbackSlot = fallbackStore.pages.chat
+    check('H14: no plaintext entry is written; only a tombstone remains',
+      !!fallbackSlot && fallbackSlot.cleared === true && !fallbackSlot.entries,
+      JSON.stringify(fallbackSlot))
+    check('H14: the newer tombstone masks the old grant on read',
+      fallbackRead.found === false, JSON.stringify(fallbackRead))
+
+    // H15: if deleteRecord fails but the grant can be replaced by a tombstone,
+    // clear is still effective and readPage must report not-found.
+    const tombstoneRecords = new Map()
+    tombstoneRecords.set(oldKey, {
+      kind: 'grant',
+      payload: { version: 1, page: 'chat', entries: { userToken: 'old-token' }, savedAt: '2020-01-01T00:00:00.000Z' },
+    })
+    const tombstoneProvider = {
+      async readRecord(key) { return tombstoneRecords.get(key) || null },
+      async modifyRecord(key, mutate) {
+        const next = await mutate(tombstoneRecords.get(key))
+        tombstoneRecords.set(key, next)
+        return next
+      },
+      async deleteRecord() { throw new Error('delete failed') },
+    }
+    const tombstoneHost = createWebLoginHost({ get(name) { return name === 'credentials' ? tombstoneProvider : null } })
+    const tombstoneClear = await tombstoneHost.clearPage('chat')
+    const tombstoneRead = await tombstoneHost.readPage('chat')
+    check('H15: a credential tombstone masks an undeletable old grant',
+      tombstoneClear.ok && tombstoneRecords.get(oldKey).payload.cleared === true && tombstoneRead.found === false,
+      JSON.stringify({ clear: tombstoneClear, read: tombstoneRead }))
+
+    // H16: both credential removal routes failing is not a success. The file
+    // tombstone still masks reads, but the caller must see the failure.
+    const stuckRecords = new Map()
+    stuckRecords.set(oldKey, {
+      kind: 'grant',
+      payload: { version: 1, page: 'chat', entries: { userToken: 'old-token' }, savedAt: '2020-01-01T00:00:00.000Z' },
+    })
+    const stuckProvider = {
+      async readRecord(key) { return stuckRecords.get(key) || null },
+      async modifyRecord() { throw new Error('tombstone failed') },
+      async deleteRecord() { throw new Error('delete failed') },
+    }
+    const stuckHost = createWebLoginHost({ get(name) { return name === 'credentials' ? stuckProvider : null } })
+    const stuckClear = await stuckHost.clearPage('chat')
+    const stuckRead = await stuckHost.readPage('chat')
+    check('H16: an undeletable credential is reported as a failed clear',
+      stuckClear.ok === false && stuckRead.found === false,
+      JSON.stringify({ clear: stuckClear, read: stuckRead }))
+
+    // H19: a save strictly after a clear must restore the page; the file
+    // tombstone must not outrank the newer credential entry.
+    const orderingRecords = new Map()
+    const orderingProvider = {
+      async readRecord(key) { return orderingRecords.get(key) || null },
+      async modifyRecord(key, mutate) {
+        const next = await mutate(orderingRecords.get(key))
+        orderingRecords.set(key, next)
+        return next
+      },
+      async deleteRecord(key) { orderingRecords.delete(key) },
+    }
+    const orderingHost = createWebLoginHost({ get(name) { return name === 'credentials' ? orderingProvider : null } })
+    const orderingClear = await orderingHost.clearPage('api')
+    const orderingSave = await orderingHost.savePage('api', { userToken: 'after-clear' })
+    const orderingRead = await orderingHost.readPage('api')
+    check('H19: a save after clear restores the newer snapshot',
+      orderingClear.ok && orderingSave.ok && orderingRead.found
+      && orderingRead.entries.userToken === 'after-clear',
+      JSON.stringify({ clear: orderingClear, save: orderingSave, read: orderingRead }))
+
+    // H17: a stale file entry must not outlive a newer credential tombstone.
+    // This is the "sign out, then the old file copy logs you back in" path.
+    // The plaintext entry is planted directly on disk the way an earlier build
+    // would have left it; new saves no longer write such entries (CH-06).
+    {
+      const staleFile = JSON.parse(fs.readFileSync(fallbackHost.storePath(), 'utf8'))
+      staleFile.pages.chat = {
+        version: 1,
+        entries: { userToken: 'stale-file-token' },
+        savedAt: '2020-01-01T00:00:00.000Z',
+      }
+      fs.writeFileSync(fallbackHost.storePath(), JSON.stringify(staleFile), 'utf8')
+    }
+    const clearedRecords = new Map()
+    clearedRecords.set(oldKey, {
+      kind: 'grant',
+      payload: { version: 1, page: 'chat', cleared: true, savedAt: '2030-01-01T00:00:00.000Z' },
+    })
+    const clearedProvider = {
+      async readRecord(key) { return clearedRecords.get(key) || null },
+    }
+    const clearedHost = createWebLoginHost({ get(name) { return name === 'credentials' ? clearedProvider : null } })
+    const clearedRead = await clearedHost.readPage('chat')
+    check('H17: a newer credential tombstone beats a stale file entry',
+      clearedRead.found === false, JSON.stringify(clearedRead))
+
+    // H18: a corrupt JSON file is preserved as .corrupt-* instead of being
+    // silently overwritten by the next save.
+    fs.writeFileSync(tombstoneHost.storePath(), '{broken', 'utf8')
+    await tombstoneHost.readPage('chat')
+    check('H18: a corrupt login file is quarantined',
+      fs.readdirSync(join(TEST_HOME, 'dsh-sidebar-suite')).some((name) => name.indexOf('web-login.json.corrupt-') === 0),
+      fs.readdirSync(join(TEST_HOME, 'dsh-sidebar-suite')).join(','))
+
     let routes = 0
     const connection = { fetch: { register() { routes += 1 } } }
     const routeHost = createWebLoginHost({ get() { return connection } })
@@ -346,6 +493,7 @@ async function main() {
   }
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
+  try { fs.rmSync(TEST_HOME, { recursive: true, force: true }) } catch (error) { void error }
   if (fail) process.exitCode = 1
 }
 

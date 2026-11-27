@@ -122,7 +122,9 @@ try {
   check('A2: the other entry was not collateral damage',
     entryKeys(live).length === 1, entryKeys(live))
 } finally {
-  fs.rmSync(HOME, { recursive: true, force: true })
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 // ---------------------------------------------------------------------------

@@ -30,11 +30,18 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Syntax check the three runtime scripts
+      - name: Syntax check the runtime scripts
         run: |
           node --check lib/index.js
           node --check lib/client.js
           node --check lib/temp-session-host.mjs
+          node --check lib/web-login-host.mjs
+          node --check lib/window-focus-host.mjs
+          node --check lib/update-host.mjs
+          node --check scripts/smoke-l5.mjs
+          node --check scripts/verify-compat.mjs
+          node --check scripts/run-tests.mjs
+          node --check scripts/coverage.mjs
 
       - name: Parse every JSON manifest
         run: |
@@ -48,4 +55,4 @@ jobs:
       - name: Verify the published tarball contains the docs and assets
         run: |
           npm pack --dry-run --json > pack.json
-          node --input-type=module -e "import fs from 'node:fs'; const j=JSON.parse(fs.readFileSync('pack.json','utf8'))[0]; const names=j.files.map(f=>f.path); const required=['lib/index.js','lib/client.js','lib/temp-session-host.mjs','temp-session-config.txt','cordis.patch.yml','package.json','使用说明.md','CHANGELOG.md','DETAIL.md','screenshots.json','assets/icon-180.png','assets/real-screenshots/01-overlay.png','assets/real-screenshots/02-tabs.png','assets/real-screenshots/03-control-bar.png']; for (const f of required) { if (!names.includes(f)) { console.error('MISSING from tarball:', f); process.exit(1) } console.log('packed:', f) } console.log('version', j.version, 'files', names.length)"
+          node --input-type=module -e "import fs from 'node:fs'; const j=JSON.parse(fs.readFileSync('pack.json','utf8'))[0]; const names=j.files.map(f=>f.path); const required=['lib/index.js','lib/client.js','lib/temp-session-host.mjs','lib/web-login-host.mjs','lib/window-focus-host.mjs','lib/update-host.mjs','temp-session-config.txt','cordis.patch.yml','package.json','使用说明.md','CHANGELOG.md','DETAIL.md','screenshots.json','assets/icon-180.png','assets/real-screenshots/01-overlay.png','assets/real-screenshots/02-tabs.png','assets/real-screenshots/03-control-bar.png']; for (const f of required) { if (!names.includes(f)) { console.error('MISSING from tarball:', f); process.exit(1) } console.log('packed:', f) } console.log('version', j.version, 'files', names.length)"

@@ -4,6 +4,7 @@
 // never steal focus or depend on which window is in front. These checks pin the
 // contract around it — one POST route, Windows-only degradation, and a target
 // PID that cannot be supplied by the request.
+import fs from 'node:fs'
 import { createWindowFocusHost } from '../lib/window-focus-host.mjs'
 
 let pass = 0
@@ -101,6 +102,17 @@ async function main() {
     twice.register(tctx) === 1 && twice.register(tctx) === 1)
   check('F11: the route path is exposed for diagnostics',
     twice.routePath === '/api/dsh-sidebar-suite.focus-window')
+
+  // The Win32 script itself cannot run in a unit test without stealing focus.
+  // Pin the failure it just fixed: AppActivate's boolean must not short-circuit
+  // the real GetForegroundWindow() check, and a failed check must fall through
+  // to SwitchToThisWindow + a delayed re-read.
+  const focusSource = fs.readFileSync(new URL('../lib/window-focus-host.mjs', import.meta.url), 'utf8')
+  check('F12: success requires the real foreground window, not AppActivate',
+    !focusSource.includes('or $activated') &&
+    focusSource.includes('Start-Sleep -Milliseconds 150') &&
+    /SwitchToThisWindow\(\$hwnd, \$true\)[\s\S]*GetForegroundWindow\(\)/.test(focusSource),
+    focusSource.slice(focusSource.indexOf('$finalForeground'), focusSource.indexOf('Write-Output (\'{\"ok\":false')))
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail) process.exitCode = 1

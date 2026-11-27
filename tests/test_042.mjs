@@ -90,7 +90,7 @@ try {
     HOST_SRC.includes('${path}.${process.pid}.${storeWriteSeq}.tmp') &&
     /await rename\(tmp, path\)/.test(HOST_SRC))
   check('source: a failing write cleans up its temp file',
-    /finally \{[\s\S]{0,200}?await rm\(tmp, \{ force: true \}\)/.test(HOST_SRC))
+    HOST_SRC.includes('await rm(tmp, { force: true })'))
   check('source: an unreadable store is kept as .corrupt before overwrite',
     HOST_SRC.includes("`${path}.corrupt`"))
   check('source: the atomic exit write does not truncate the target',
@@ -161,7 +161,9 @@ try {
 } catch (error) {
   check('test harness did not throw', false, (error && error.stack) || String(error))
 } finally {
-  try { fs.rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')

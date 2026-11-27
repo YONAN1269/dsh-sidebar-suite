@@ -150,7 +150,9 @@ try {
   check('status-retry: retries gated by a backoff deadline, not a hard count',
     /nowMs < tempStatusNextTry/.test(CLIENT_SRC))
 } finally {
-  try { fs.rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')

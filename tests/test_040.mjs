@@ -202,8 +202,11 @@ try {
     /const CHAT_CLIENT = process\.env\.DSH_CHAT_CLIENT \|\| ''/.test(t020) &&
     /if \(CHAT_CLIENT && fs\.existsSync\(CHAT_CLIENT\)\)/.test(t020))
 } finally {
+  // Detach the host's real exit quit hook before deleting the fixture dir.
+  process.removeAllListeners('exit')
   for (const dir of [HOME]) {
-    try { fs.rmSync(dir, { recursive: true, force: true }) } catch (error) { void error }
+    try { fs.rmSync(dir, { recursive: true, force: true }) }
+    catch (error) { console.error('CLEANUP_FAIL ' + dir + ' ' + error.code + ' ' + error.message) }
   }
 }
 

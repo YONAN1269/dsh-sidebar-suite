@@ -100,7 +100,12 @@ try {
     // small entries behind it.
     const sizes = { 't1-oldest': MB, 't2': MB, 't3': 300 * MB, 't4-newest': 10 * MB }
     for (const entry of ordered) setBytes(entry, sizes[entry.meta.id] || MB)
-    // GET /trash is the read route that also applies retention.
+    // GET /trash is read-only: it lists every parked entry without trimming.
+    const listedBefore = await call('/api/dsh-temp-session.trash')
+    const beforeTrim = (Array.isArray(listedBefore.entries) ? listedBefore.entries : []).map((e) => e.id).sort()
+    check('A1: GET trash lists all four entries without trimming', beforeTrim.length === 4, beforeTrim)
+    // The size trim runs on the purge path (purgeAll -> pruneTrashSync).
+    await call('/api/dsh-temp-session.purge', { method: 'POST' })
     const listed = await call('/api/dsh-temp-session.trash')
     const kept = (Array.isArray(listed.entries) ? listed.entries : []).map((e) => e.id).sort()
     check('A1: only the newest entry survives a byte-cap trim',
@@ -109,7 +114,11 @@ try {
       kept.indexOf('t1-oldest') < 0 && kept.indexOf('t2') < 0, kept)
   }
 } finally {
-  fs.rmSync(HOME, { recursive: true, force: true })
+  // The host registers a real process 'exit' quit hook; it rewrites the config
+  // under HOME on exit, which would recreate the fixture dir after we delete it.
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

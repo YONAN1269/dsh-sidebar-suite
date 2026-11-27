@@ -7,7 +7,7 @@
 // until every group is expanded, hides the button via CSS, and honours `off`.
 import fs from 'node:fs'
 import vm from 'node:vm'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -209,7 +209,14 @@ const groupA = makeOverflow('ws-a', 1)
 const groupB = makeOverflow('ws-b', 3)
 const groupC = makeOverflow('ws-c', 0)
 const on = buildClient(fetcher({ ok: true, expandAllSessions: true }), [groupA, groupB, groupC])
-check('css: overflow button is hidden when enabled', on.css.includes('html[data-dsbs-expand-all="true"] button[data-row-key^="overflow:"]'))
+check('css: overflow button is hidden when enabled', on.css.includes('html[data-dsbs-expand-all="true"] button[data-row-key^="overflow:"][aria-expanded="true"]'))
+// 1.1.4: the hide must not apply to a button that is still collapsed. The host
+// re-renders "展开其余 N 个会话" for a few hundred ms after a group re-opens; if
+// that button were display:none the user would have no way in. Assert the
+// selector carries the aria-expanded gate and that no unconditional variant
+// survives anywhere in the sheet.
+check('css: hide is gated on aria-expanded=true', on.css.includes('overflow:"][aria-expanded="true"]{display:none'))
+check('css: no unconditional overflow hide', !/button\[data-row-key\^="overflow:"\]\{display:none/.test(on.css))
 await wait(900)
 check('expand: html flag is on', on.html.getAttribute('data-dsbs-expand-all') === 'true', String(on.html.getAttribute('data-dsbs-expand-all')))
 check('expand: one-batch group expanded', groupA.clicks === 1 && groupA.getAttribute('aria-expanded') === 'true', String(groupA.clicks))
@@ -239,6 +246,11 @@ const src = readFileSync(CLIENT, 'utf8')
 check('contract: selector matches host data-row-key', src.includes('button[data-row-key^="overflow:"]'))
 check('contract: only aria-expanded=false is pressed', src.includes("button.getAttribute('aria-expanded') === 'true') continue"))
 check('contract: config key is documented in the file', /EXPAND_ALL_SESSIONS=on/.test(readFileSync(CONFIG, 'utf8')))
+
+// Detach the host's real exit quit hook, then remove the throwaway DSH_HOME.
+process.removeAllListeners('exit')
+try { rmSync(HOME, { recursive: true, force: true }) }
+catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')
 process.exit(fail === 0 ? 0 : 1)

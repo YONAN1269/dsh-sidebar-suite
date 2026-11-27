@@ -12,11 +12,20 @@
 // assertion, never a chained dereference that would crash the test itself.
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { buildSidebar, UNKNOWN_HOST_PROFILE, sbTimeout, sbInterval } from './dom-stub.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
+
 const read = (p) => fs.readFileSync(ROOT + '/' + p, 'utf8')
 const client = read('lib/client.js')
 const pkg = JSON.parse(read('package.json'))
@@ -211,7 +220,8 @@ async function main() {
     pkg.engines.dsh === '>=0.2.2-rc.1 <0.3.0-0 || >=0.2.3-0 <0.3.0-0',
     String(pkg.engines.dsh))
   check('D2: this suite is wired into npm test',
-    /tests\/test_062\.mjs/.test(pkg.scripts.test || ''))
+    /scripts\/run-tests\.mjs/.test(pkg.scripts.test || '') &&
+    suiteList().includes('test_062.mjs'))
   check('D3: client hosts the whole adaptation layer in one file',
     ['var KNOWN_SLOTS =', 'function hostRead(', 'function hostCall(',
       'function featureDetect(', 'function degrade(', 'var hostResolve = resolveSidebar',

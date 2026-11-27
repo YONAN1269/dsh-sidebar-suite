@@ -14,8 +14,8 @@
 详情页长文档见 [DETAIL.md](DETAIL.md)（中英双语 / bilingual, 含收款码 / includes the payment QR）。
 The full detail document is [DETAIL.md](DETAIL.md).
 
-**一步步照着用**：[使用说明.md](使用说明.md) —— 安装、布局说明、临时会话、配置文件逐行说明、常见故障与反馈，中英双语随包附带（0.2.5 起）。
-**Step-by-step guide**: [使用说明.md](使用说明.md) — install, layouts, temp sessions, every config line, troubleshooting and feedback; shipped inside the npm package since 0.2.5.
+**一步步照着用**：[使用说明.md](使用说明.md) —— 安装、布局说明、临时会话、配置文件逐行说明、常见故障与反馈；这份分步指南为中文，随包附带（0.2.5 起）。界面文案与本详情页中英对照。
+**Step-by-step guide**: [使用说明.md](使用说明.md) — install, layouts, temp sessions, every config line, troubleshooting and feedback; the guide itself is in Chinese and ships inside the npm package since 0.2.5. UI labels and this page are bilingual.
 
 ## 这是一款什么插件 / What this plugin is
 
@@ -117,13 +117,13 @@ Since 0.8.3, a collapsed 56px icon rail (browser and macOS builds) keeps **one**
 - **Chat** 在主内容区打开 `chat.deepseek.com` 的免费网页版。
 - **API** 打开 `platform.deepseek.com` 的 API 控制台。
 
-两个网页不是 iframe（DeepSeek 两个站点都用 CSP `frame-ancestors 'none'` 拒绝被嵌），而是 DSH 桌面端提供的原生 `webview` guest，拥有独立、一次性的会话分区。guest 先以 `about:blank#<lease>` 挂载，通过主进程校验后再 `loadURL()` 到真实站点；`loadURL()` 必须等 `about:blank` 的 `dom-ready`（或 `getURL()` 已可读）之后才调用，否则 Electron 会直接报错。登录状态由插件把网页 localStorage 里的登录键（`userToken`、`__appKit_userInfo`、`deepseek-device-id:*`）快照下来（优先写 `ctx.credentials` 的 grant record，没有 credentials 时写 `~/.dsh/dsh-sidebar-suite/web-login.json`，权限 0600），下次启动先注入再 reload。网页存活期间每 1.5 秒轮询一次，**不依赖登录成功后是否发生导航事件**；扫码完成即使页面还停在 `/sign_in` 也能捕获。恢复前会检查当前 token 是否真的可解析，像 `{"value":null}` 这种登出页留下的空包装不会再被误判为已登录。**只镜像 localStorage，不保存 cookie**；Chat 与 API 控制台都已实测在 DSH 完整退出后重新打开仍保持登录。快照不会上传到任何地方。
+两个网页不是 iframe（DeepSeek 两个站点都用 CSP `frame-ancestors 'none'` 拒绝被嵌），而是 DSH 桌面端提供的原生 `webview` guest，拥有独立、一次性的会话分区。guest 先以 `about:blank#<lease>` 挂载，通过主进程校验后再 `loadURL()` 到真实站点；`loadURL()` 必须等 `about:blank` 的 `dom-ready`（或 `getURL()` 已可读）之后才调用，否则 Electron 会直接报错。登录状态由插件把网页 localStorage 里的登录键（`userToken`、`__appKit_userInfo`、`deepseek-device-id:*`）快照下来，写进 `ctx.credentials` 的 grant record，下次启动先注入再 reload。**宿主凭据服务不可用时，快照不再落盘保存**：这种情况下登录状态不会保留，重启 DSH 后需要在该网页重新登录一次；凭据服务正常时行为不变。每页最多 64 个键、单值 ≤16KB、总计 ≤64KB；快照保存请求体上限 128KB，临时会话配置请求体上限 16KB，超限返回 413。网页存活期间每 1.5 秒轮询一次，**不依赖登录成功后是否发生导航事件**；扫码完成即使页面还停在 `/sign_in` 也能捕获。恢复前会检查当前 token 是否真的可解析，像 `{"value":null}` 这种登出页留下的空包装不会再被误判为已登录。**只镜像 localStorage，不保存 cookie**；Chat 与 API 控制台都已实测在 DSH 完整退出后重新打开仍保持登录。快照不会上传到任何地方。
 
 这条开关只在**桌面版、宽侧栏、没有第三方页签占列、且 `dsh-deepseek-chat` 不在 CHAT 模式**时出现；折叠图标条、窄栏、网页版没有桌面 guest 桥时开关隐藏，品牌字标同时恢复原尺寸。新增的 3 条 `/api/dsh-sidebar-suite.web-login-*` 路由需要**彻底退出 DSH 再打开**才会注册，只热重载客户端不够。
 
 ### Three-page switch: Agent / DeepSeek Chat / API (1.1.2)
 
-A compact segmented pill sits in the sidebar brand row, between the `deepseek HARNESS` wordmark and the panel toggle, and switches the main column between the current agent conversation, the free `chat.deepseek.com` site, and the `platform.deepseek.com` API console. The wordmark is zoomed to 78% while the pill is visible and restored when it hides. The sites are native DSH `webview` guests, not iframes (both send `frame-ancestors 'none'`). Small login-key snapshots (`userToken`, `__appKit_userInfo`, `deepseek-device-id:*`) are stored through `ctx.credentials` (or a 0600 file under `~/.dsh` when no credential provider exists) and re-injected on the next launch. A 1.5-second poll captures the token even when DeepSeek's QR login finishes without a navigation event, and a `{"value":null}` wrapper left by the signed-out page is no longer mistaken for a live token. **localStorage only, no cookies**; both Chat and the API console were verified to stay signed in after a full DSH restart. The pill appears only on the desktop build, in a wide column, with no third-party tab owning the sidebar and with `dsh-deepseek-chat` not in CHAT mode; when it hides, the wordmark returns to full size. Fully quit and reopen DSH once so the three new host routes register.
+A compact segmented pill sits in the sidebar brand row, between the `deepseek HARNESS` wordmark and the panel toggle, and switches the main column between the current agent conversation, the free `chat.deepseek.com` site, and the `platform.deepseek.com` API console. The wordmark is zoomed to 78% while the pill is visible and restored when it hides. The sites are native DSH `webview` guests, not iframes (both send `frame-ancestors 'none'`). Small login-key snapshots (`userToken`, `__appKit_userInfo`, `deepseek-device-id:*`) are stored through `ctx.credentials` and re-injected on the next launch. When the host credential service is unavailable the snapshot is not written to disk: the login does not persist, and you sign in again on that page after restarting DSH. Behaviour is unchanged while the credential service works. Per page the snapshot is capped at 64 keys, 16KB per value and 64KB in total; the save body is capped at 128KB and the temp-session config body at 16KB, oversized requests answering 413. A 1.5-second poll captures the token even when DeepSeek's QR login finishes without a navigation event, and a `{"value":null}` wrapper left by the signed-out page is no longer mistaken for a live token. **localStorage only, no cookies**; both Chat and the API console were verified to stay signed in after a full DSH restart. The pill appears only on the desktop build, in a wide column, with no third-party tab owning the sidebar and with `dsh-deepseek-chat` not in CHAT mode; when it hides, the wordmark returns to full size. Fully quit and reopen DSH once so the three new host routes register.
 
 ## 第三方插件接入：注册自己的页签 / Third-party tabs（0.3.0）
 
@@ -205,7 +205,7 @@ The bundle patch mounts the plugin; do not also add a manual mount line.
 升级插件包后请完全退出并重新打开 DSH（客户端代码不热重载）；但 0.2.8 起**改配置文件或在详情页改设置都不用重启**，约 3 秒自动生效。
 The client half is not hot-reloaded — fully quit and reopen DSH after installing or editing files.
 
-**0.6.1 起**：实际生效的配置文件在 DSH 数据目录 `~/.dsh/dsh-sidebar-suite/temp-session-config.txt`（Windows 例：`C:\Users\12691\.dsh\dsh-sidebar-suite\temp-session-config.txt`），升级插件不会再覆盖它；包里同名那份只是首次启动用的出厂模板，改它无效。详情页会显示当前文件的完整路径。
+**0.6.1 起**：实际生效的配置文件在 DSH 数据目录 `~/.dsh/dsh-sidebar-suite/temp-session-config.txt`（Windows 例：`%USERPROFILE%\.dsh\dsh-sidebar-suite\temp-session-config.txt`），升级插件不会再覆盖它；包里同名那份只是首次启动用的出厂模板，改它无效。详情页会显示当前文件的完整路径。
 Since 0.6.1 the writable config lives in DSH home (`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`), so package upgrades cannot reset it. The identically named file inside the package is a factory template read only on first boot; the detail page shows the live path.
 
 ## 已知限制 / Known limits
@@ -229,13 +229,16 @@ Since 1.0.0 the plugin commits to SemVer: no breaking changes within 1.x. The co
 
 DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成「**展开其余 N 个会话**」按钮。装了本插件之后这个折叠已经没有意义，所以默认：
 
-- 每次侧栏刷新都把每个工作区的会话**全部展开**：按宿主自己的按钮走，不改宿主 DOM。
-- 「展开其余 N 个会话」／「收起」按钮**整块隐藏**。
+- **已经展开的分组**不再只显示 5 条：按宿主自己的按钮走，一路点到全部可见，不改宿主 DOM。
+- **折叠的分组保持折叠**：分组折叠是宿主自己的状态（`dsh.workspace.view.v5` 持久化在浏览器里），插件不替用户打开。点开后和上面那条一样展开到全部。
+- **「收起」在展开完成后隐藏**；「展开其余 N 个会话」只在尚未展开的那几百毫秒里短暂可见（1.1.4），免得出现「只看到 5 条、按钮又被藏掉」的死角。
 - 想恢复 DSH 原来的折叠：在详情页关掉「会话默认全展开」开关即可；或把 DSH 数据目录里 `temp-session-config.txt` 的 **`EXPAND_ALL_SESSIONS=on` 改成 `off`**，保存后约 3 秒生效（已展开的列表要切换一次工作区才会收回去）。
 
 依据（在 `app.asar` 里逐字核对过 `@deepseek-ai/dsh-client-ui-workspace/lib/client.js`）：文案 `sessions.expand` = `展开其余 {n} 个会话`，按钮是 `<button data-row-key="overflow:<group>">`，点一次把该组水位线抬高 5 条，全部显示后 `aria-expanded` 变为 `true` 且文案变成「收起」。
 
-> The host folds session lists after five rows. This plugin presses the host's own overflow button until nothing is hidden, then hides that control entirely. Use the detail-page switch (or set `EXPAND_ALL_SESSIONS=off` in the `temp-session-config.txt` inside DSH home) to restore DSH's folding. Both hot-reload in seconds, no restart.
+> 2026-11-26 实测（CDP 连真机 0.2.3 桌面版，切三种分组）：单列表 10/10 条全渲染、没有溢出按钮；按工作区 / 按工作区树都是 8/10，差的 2 条在折叠的分组里——这条功能只管「组内水位线」，不管「分组折叠」。
+
+> The host folds session lists after five rows. This plugin presses the host's own overflow button until nothing is hidden, then hides the "收起" control once a group is fully open. Groups the user folded stay folded: that expansion state belongs to the host store, not to this plugin. Use the detail-page switch (or set `EXPAND_ALL_SESSIONS=off` in the `temp-session-config.txt` inside DSH home) to restore DSH's folding. Both hot-reload in seconds, no restart.
 
 ## 临时会话 / Temporary session（0.2.0）
 
@@ -247,12 +250,13 @@ DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成�
 
 ### 右键：保留为正式会话 / 立即删除（0.4.0）
 
-**在侧栏里右键任何一个带「临时」标签的会话行**，会弹出一个两项菜单：
+**在侧栏里右键任何一个带「临时」标签的会话行**，会弹出一个三项菜单：
 
 | 选项 | 结果 |
 |---|---|
 | **保留为正式会话** | 它从此不算临时 —— 退出 DSH 不会删、定时清理不会碰，和普通会话完全一样 |
 | **立即删除** | 当场删掉这个会话（0.8.0 起会先进本机回收站，可在详情页「最近删除」里恢复） |
+| **打开会话目录** | 在文件管理器里显示这个会话的日志目录；宿主 Remote 不可用或打开失败时退回复制目录路径到剪贴板，连路径也复制不出来时，会把完整路径直接贴在提示里供手动复制 |
 
 出现的时机与边界：
 
@@ -272,7 +276,7 @@ DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成�
 
 - **列表**：此刻的每个临时会话一行，标题优先（来自会话缓存，取不到显示 ID）；
 - **单条动作**：「保留为正式会话」「立即删除」和右键菜单是同一批动作、同一条后端路由，删除同样先进回收站、同样要点两次确认；
-- **全部保留（0.8.5）**：一枚按钮把整个列表一次性转正——比逐个右键快，也比「关掉退出删除」温和（关掉开关会让**以后所有**临时会话都变成永久，这只影响现在这一批）；
+- **全部保留（0.8.5）**：一枚按钮把整个列表一次性转正——比逐个右键快，也比「关掉退出删除」温和（关掉开关会让**以后所有**临时会话都变成永久，这只影响现在这一批）；1.1.5 起两步确认：第一次点击只进入准备态并提示「再点一次确认」，5 秒内第二次点击才发起转正，超时或切到别的动作自动解除；
 - **页脚**：「共 N 条 · 上限 M」，一眼看出离 `MAX_KEPT` 还有多少余量；
 - **清理信息（0.8.5）**：下面「临时会话自动删除」卡里新增两行——「上次清理：N/M · 原因 @ 时间」和「下次定时清理：时间」；点「立即清理临时会话」后结果立刻显示，不用刷新页面。
 
@@ -281,7 +285,7 @@ DSH 自己的会话列表每个工作区只先显示 5 条，剩下的折叠成�
 > 管理入口现在有三层，按需取用：侧栏右键（就地、单条）→ 详情页「当前临时会话」区（集中、批量）→ 「最近删除」（后悔药）。
 > Three layers of control: the row menu (in place, one at a time), the detail-page section (central, bulk), and the trash (undo).
 
-English: the detail page now manages the live list too — per-row keep/delete sharing the row menu's routes, a Keep-all button that promotes the whole list in one store write, the last-cleanup result and next scheduled run shown on the policy card, the Temp button's tooltip carrying the live count, and a copyable config-file path.
+English: the detail page now manages the live list too — per-row keep/delete sharing the row menu's routes, a Keep-all button that promotes the whole list in one store write (armed on the first click, promoted on the second within a 5s window; it cancels itself otherwise), the last-cleanup result and next scheduled run shown on the policy card, the Temp button's tooltip carrying the live count, and a copyable config-file path.
 
 ### 它是怎么被删掉的（说清楚，不夸大）
 
@@ -339,28 +343,58 @@ DSH **没有公开的「删除会话」接口**（我核对过 `app.asar`：`ses
 
 两条路写的是 DSH 数据目录里的同一个文件：详情页开关按行替换（注释、空行、顺序原样保留），Host 半用 `mtime + size` 感知外部改动并递增 `configRevision`；客户端每 2.5–3 秒轮询一次，看到新版本就原地重应用。所以**记事本改完保存，约 3 秒自动生效，不用重启 DSH**；反过来 UI 保存前也会先重新读文件，不会把刚手改的其它行覆盖掉。卡片底部会显示当前的「设置版本」号，方便确认有没有生效。
 
-### 启动置前（1.1.3，仅 Windows）
+### 启动置前（1.1.3，仅 Windows；1.1.5 加「立即试一次」）
 
 DSH 的 preload 没有 show / focus / restore 主窗口的 API，所以窗口被全屏应用盖住时，客户端自己拉不回来。详情页「选项」区底部新增「窗口 / Window」小节和 `focusOnLaunch` 开关，**默认关闭**；打开后 DSH 启动完成时执行一次：Host 半用 PowerShell + Win32 找到 DSH 主窗口，`ShowWindow` 恢复、`SetForegroundWindow` 置前，`AppActivate` 兜底。只在启动时做一次，运行中不会反复抢焦点；非 Windows 直接返回不支持，不执行外部命令。
+
+**1.1.5 起**开关旁边多一个「立即试一次 / Test now」：不用重启，点一下就知道当前这台机器能不能把窗口拉到前台。成功、失败、当前系统不支持都会直接在下面显示一行结果；打开开关时也会自动试一次，不用等到下次启动。
 
 > 这个开关存在插件自己的配置表单里，不在 `temp-session-config.txt`；改它不需要重启，下一次启动生效。It lives in the plugin's own config form, not `temp-session-config.txt`; the next launch applies it.
 
 > 仍然需要重启的只有一件事：**升级插件包本身**（`lib/` 里的客户端代码不会热重载）。
 > The only thing that still needs a restart is upgrading the plugin package itself.
 
+### 检查更新（1.1.5）
+
+详情页标题旁边新增「检查更新 / Check updates」。打开详情页时自动查一次 npm 上的最新版本，显示「当前版本 / 最新版本 / 已是最新」；查到新版本时按钮变成「有新版本」，并多一个「复制更新命令 / Copy update command」，复制出来就是：
+
+```sh
+dsh plugin --profile desktop add dsh-sidebar-suite
+```
+
+命令里的 `desktop` 是示例 profile 名，要换成自己正在用的 profile；**装完后需完全退出并重新打开 DSH**，新包才会生效（客户端代码不热重载）。
+
+这个检查只向 npm 读取一个版本号，**不上传本机信息**；请求不跟随重定向、响应体大小受限，版本比较区分预发布版；结果在 Host 里缓存 10 分钟，反复打开详情页不会反复请求。断网时只显示一行「检查失败」，不影响侧栏、临时会话或任何开关。
+
+> The settings header now checks npm for the latest version and shows current/latest. A newer version adds a button that copies the one-line install command. The `desktop` in that command is a placeholder for your own profile; after installing, fully quit and reopen DSH — the client half is not hot-reloaded. The lookup does not follow redirects, caps the response body, and compares versions prerelease-aware. It uploads nothing and caches the result for ten minutes; being offline only shows a small status line.
+
+### 会话收藏 / Session favorites（1.1.5）
+
+左侧栏会话行悬浮时会多一颗星，右键菜单也会多一项「收藏会话 / 取消收藏」。收藏后：
+
+- **标题前显示金色 ★**：只加在标题文字前，不改变行高、不挡点击；React 重渲染不会把星弄丢（用 `data-row-key` 生成 CSS，不往行里塞节点）。
+- **列表顶部出现「收藏夹」分组**：带数量、可折叠，按会话最近更新时间倒序。点击组内某一行，就打开对应的会话；行尾还会显示相对时间（今天 / 昨天 / 11/25）。收藏夹行高、字号、左右缩进沿用宿主会话行，当前打开的那条会用宿主选中底色标出来。
+- **收藏超过 8 条自动出现搜索框**：按标题实时过滤，计数仍显示总数；搜索无结果会提示「没有匹配的收藏」，不会把分组变空。
+- **已归档的会话不进收藏夹**：宿主原生归档后，收藏状态保留但分组里不显示，避免把回收站里的会话又摆回主列表。
+- **收藏夹跟着这个 profile 走**：状态存在当前 DSH profile 的 renderer `localStorage`（`dsh-sidebar-suite:favorites.v1`），关掉重开还在；多个窗口之间会同步，但换机器 / 换 profile 不会跟过去。
+
+它和 `@michengai/dsh-archive-manager` 的关系是**共用一套收藏**，不是各存一套：如果宿主里装了 archive-manager 并暴露它的收藏接口，本插件优先读写它的 `favoriteSessionIds`，自己的本地列表只做缓存；它的星已经画在标题前时，本插件会隐藏自己的星和行内按钮，避免一颗标题两颗星。没装 / 停用 archive-manager 时，才用本插件自己的本地收藏。
+
+> The session row gets a hover star and a native context-menu item. Favorited sessions show a gold star before the title, a collapsible 收藏夹 group sits above the workspace list, archived sessions stay out of it, and the set persists in the profile's localStorage. The group matches the host row rhythm, marks the open favorite, and adds a title filter once there are more than eight favorites. When `@michengai/dsh-archive-manager` is loaded, its favorite list is reused as the source of truth and its star wins, so one title never shows two stars.
+
 ### 配置（记事本可改）
 
 > 下面的键/默认值与插件包内 `temp-session-config.txt`（出厂模板）保持一致；模板是唯一权威源，改动配置键时请先改它并跑 `npm test`。
 
-**文件位置（0.6.1 起）**：`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`，Windows 上是 `C:\Users\12691\.dsh\dsh-sidebar-suite\temp-session-config.txt`。只改等号右边，保存后**约 3 秒自动生效，不用重启**；详情页的开关写的是同一个文件。插件包内的同名文件只是首次启动复制过去用的出厂模板，**不要改它**。
+**文件位置（0.6.1 起）**：`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`，Windows 上是 `%USERPROFILE%\.dsh\dsh-sidebar-suite\temp-session-config.txt`。只改等号右边，保存后**约 3 秒自动生效，不用重启**；详情页的开关写的是同一个文件。插件包内的同名文件只是首次启动复制过去用的出厂模板，**不要改它**。
 
 | 键 | 默认 | 作用 |
 | --- | --- | --- |
 | `SHOW_TEMP_BUTTON` | `on` | 是否显示「临时」按钮 |
 | `TEMP_IN_CHAT_MODE` | `hide` | 装了 `dsh-deepseek-chat` 时，处于 CHAT 官网模式要不要显示按钮 |
 | `TEMP_BUTTON_STYLE` | `pair` | `pair` = 和「新会话」并排；`own` = 单独占一行，完全不动「新会话」（`0.6.0` 起真正生效） |
-| `EXPAND_ALL_SESSIONS` | `on` | 会话列表全部展开并隐藏「展开其余 N 个会话」；`off` = 恢复宿主折叠 |
-| `TEMP_ROW_MENU` | `on` | 右键临时会话是否弹出「保留为正式会话 / 立即删除」；`off` = 不接管右键 |
+| `EXPAND_ALL_SESSIONS` | `on` | 已展开的分组不再折成 5 条（按宿主按钮展开到全部可见，展开后隐藏「收起」）；`off` = 恢复宿主折叠。折叠的分组保持折叠 |
+| `TEMP_ROW_MENU` | `on` | 右键临时会话是否弹出「保留为正式会话 / 立即删除 / 打开会话目录」；`off` = 不接管右键 |
 | `DELETE_ON_EXIT` | `on` | 退出时删除；改 `off` 就不再删，临时会话等于普通会话 |
 | `SCHEDULE_DELETE` | `off` | 每天定时清理；`on` = 到点把临时会话删掉 |
 | `SCHEDULE_TIME` | `03:00` | 定时清理的时间（24 小时制 `HH:MM`，本机时间） |

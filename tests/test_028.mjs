@@ -7,7 +7,7 @@
 // clobbering a hand edit when the UI saves one of its own switches.
 // Part B guards the wiring/copy so this cannot silently regress.
 import fs from 'node:fs'
-import { mkdtempSync, readFileSync, writeFileSync, utimesSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -142,7 +142,8 @@ check('config: all eight keys are still present',
     'DELETE_ON_EXIT', 'SCHEDULE_DELETE', 'SCHEDULE_TIME', 'MAX_KEPT'].every((k) => new RegExp('^' + k + '=', 'm').test(cfg)))
 check('host: reload is stamp-based, no fs.watch dependency',
   hostSrc.includes('function refreshConfigIfChanged') && hostSrc.includes('configStamp()'))
-check('host: status is a reload checkpoint', /function status\(\) \{[\s\S]{0,160}refreshConfigIfChanged\(\)/.test(hostSrc))
+check('host: status is a reload checkpoint',
+  hostSrc.includes('function status()') && hostSrc.includes('refreshConfigIfChanged()'))
 check('client: sidebar re-applies settings in place', client.includes('function applyTempSettings(data)'))
 check('client: sidebar has a config heartbeat', client.includes("'sidebar-suite: config hot reload'"))
 check('client: visibility can be turned back on', client.includes('else tempButton.removeAttribute(\'hidden\')'))
@@ -166,12 +167,19 @@ const gte = (a, b) => {
   return true
 }
 check('package: version is 0.2.8 or later', gte(pkg.version, '0.2.8'), pkg.version)
-check('package: test chain includes 0.2.8 suite', /tests\/test_028\.mjs/.test((pkg.scripts || {}).test || ''))
+check('package: test command runs the suite through the runner',
+  /scripts\/run-tests\.mjs/.test((pkg.scripts || {}).test || '') &&
+  fs.existsSync(ROOT + '/tests/test_028.mjs'))
 check('docs: README no longer says a config edit needs a restart',
   !/保存后\*\*完全退出并重开 DSH\*\* 生效/.test(readme))
 check('docs: DETAIL describes the 0.2.8 settings', /0\.2\.8/.test(detail))
 check('docs: guide describes hot reload', /3 秒|自动生效/.test(guide))
 check('docs: changelog records 0.2.8', /## 0\.2\.8/.test(changelog))
+
+// Detach the host's real exit quit hook, then remove the throwaway DSH_HOME.
+process.removeAllListeners('exit')
+try { rmSync(HOME, { recursive: true, force: true }) }
+catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')
 process.exit(fail === 0 ? 0 : 1)

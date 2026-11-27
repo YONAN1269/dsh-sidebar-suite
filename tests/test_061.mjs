@@ -14,12 +14,20 @@
 // which the harness can render.
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { buildSidebar, sbTimeout, sbInterval } from './dom-stub.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
 const read = (p) => fs.readFileSync(ROOT + '/' + p, 'utf8')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
 const client = read('lib/client.js')
 const pkg = JSON.parse(read('package.json'))
 const detail = read('DETAIL.md')
@@ -153,7 +161,9 @@ function buildClient(options) {
 }
 
 async function main() {
-  check('A0: this suite is wired into npm test', /test_061\.mjs/.test(pkg.scripts.test || ''))
+  check('A0: this suite is wired into npm test',
+    /scripts\/run-tests\.mjs/.test(pkg.scripts.test || '') &&
+    suiteList().includes('test_061.mjs'))
 
   // ---- A. a consumer tab must never hide every way back ----------------
   const host = buildClient({ nativeGrouping: true })

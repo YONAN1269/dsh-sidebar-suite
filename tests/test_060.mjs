@@ -237,8 +237,17 @@ async function main() {
   // locale/en.json and a Chinese one in locale/zh.json.
   check('locale: the English title carries no CJK', !/[\u4e00-\u9fff]/.test(en.meta.title), en.meta.title)
   check('locale: the Chinese title still does', /[\u4e00-\u9fff]/.test(zh.meta.title), zh.meta.title)
-  check('locale: the bilingual one-liner is untouched in both',
-    zh.meta.description === en.meta.description && en.meta.description.includes('A plugin dedicated to'))
+  check('locale: zh and en expose the same meta keys',
+    JSON.stringify(Object.keys(zh.meta || {}).sort()) === JSON.stringify(Object.keys(en.meta || {}).sort()))
+  check('locale: both one-liners are non-empty and drop the old "9 项" count',
+    typeof zh.meta.description === 'string' && zh.meta.description.trim().length > 0 &&
+    typeof en.meta.description === 'string' && en.meta.description.trim().length > 0 &&
+    !zh.meta.description.includes('9 项') && !en.meta.description.includes('9 项'))
+  check('locale/zh: description names every config key',
+    typeof zh.meta.description === 'string' && zh.meta.description.includes('全部配置键'))
+  check('locale/en: description opens in English and names the per-key control',
+    typeof en.meta.description === 'string' && /^[A-Za-z]/.test(en.meta.description.trim()) &&
+    en.meta.description.includes('a control for every config key'))
   check('locale: both still point at the detail document',
     zh.meta.detail === 'DETAIL.md' && en.meta.detail === 'DETAIL.md')
 

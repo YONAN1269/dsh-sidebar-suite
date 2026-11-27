@@ -439,6 +439,8 @@ if (CHAT_CLIENT && fs.existsSync(CHAT_CLIENT)) {
   console.log('SKIP compat checks: set DSH_CHAT_CLIENT to a dsh-deepseek-chat client.js to run them')
 }
 
-fs.rmSync(HOME, { recursive: true, force: true })
+process.removeAllListeners('exit')
+try { fs.rmSync(HOME, { recursive: true, force: true }) }
+catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 console.log('\n' + (fail.length ? 'FAILED: ' + fail.join(' | ') : 'ALL CHECKS PASSED'))
 process.exit(fail.length ? 1 : 0)

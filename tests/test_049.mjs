@@ -170,9 +170,16 @@ try {
     meta.deletedAt = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString()
     fs.writeFileSync(agedMetaPath, JSON.stringify(meta, null, 2), 'utf8')
   }
-  const afterAge = await call('/api/dsh-temp-session.trash')
+  // GET /trash is read-only: two listings leave the aged entry untouched.
+  const listedOnce = await call('/api/dsh-temp-session.trash')
+  const listedTwice = await call('/api/dsh-temp-session.trash')
+  check('trash: GET trash never prunes an aged entry on its own',
+    listedOnce.ok === true && listedOnce.entries.length === 1 &&
+    listedTwice.ok === true && listedTwice.entries.length === 1, listedTwice)
+  // Retention runs on the purge path (purgeAll -> pruneTrashSync), not on GET.
+  const purged = await call('/api/dsh-temp-session.purge', { method: 'POST' })
   check('trash: an entry older than the retention window is pruned',
-    afterAge.ok === true && afterAge.entries.length === 0, afterAge)
+    purged.ok === true && entries().length === 0, purged)
   check('trash: the pruned entry is gone from disk', entries().length === 0, entries())
 
   // ---- 6. tampered metadata cannot escape the sessions root -------------
@@ -206,7 +213,9 @@ try {
   check('trash: empty removes every entry',
     emptied.ok === true && emptied.removed >= 2 && entries().length === 0, emptied)
 } finally {
-  fs.rmSync(HOME, { recursive: true, force: true })
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed')

@@ -121,10 +121,13 @@ function buildClient(options) {
   const fetchStub = async (url) => {
     const path = String(url)
     fetchCalls.push(path)
+    if (path.includes('dsh-temp-session.track')) {
+      if (opts.trackFail) return new Response('offline', { status: 503 })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
     const body = path.includes('dsh-temp-session.status') ? statusPayload
       : path.includes('dsh-temp-session.list') ? { ok: true, ids: listIds }
-        : path.includes('dsh-temp-session.track') ? { ok: true }
-          : { ok: true }
+        : { ok: true }
     return new Response(JSON.stringify(body), { status: 200 })
   }
 
@@ -245,6 +248,18 @@ async function main() {
     check('C2: creating a temp session moves the tooltip count',
       /1 个临时会话/.test(after) && !/active/.test(after), String(after))
   }
+  {
+    // The track request itself failed (host restart / timeout), but the id is
+    // kept as best-effort temporary. The tooltip must move with that decision,
+    // not wait for the next status payload.
+    const loop = buildClient({ trackFail: true })
+    await wait(30)
+    loop.tempButton.click()
+    await wait(120)
+    const after = loop.tempButton.title
+    check('C3: an uncertain track keeps the tooltip count in step',
+      /1 个临时会话/.test(after), String(after))
+  }
 
   // ---- B. right-click reaches the shared menu ----------------------------
   {
@@ -253,9 +268,9 @@ async function main() {
     await wait(30)
     const registered = menus.calls.filter((c) => c.kind === 'register')
     check('B1: the client registers its two actions on rc.3+ hosts',
-      registered.length === 1 &&
-      registered[0].contribution.target === 'session' &&
-      typeof registered[0].contribution.resolve === 'function',
+      registered.length === 2 &&
+      registered.every((c) => c.contribution.target === 'session' &&
+        typeof c.contribution.resolve === 'function'),
       JSON.stringify(registered.map((c) => c.contribution && c.contribution.target)))
 
     const event = loop.contextMenu()

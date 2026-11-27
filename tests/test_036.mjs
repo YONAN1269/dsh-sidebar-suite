@@ -11,13 +11,26 @@
 // the published 0.4.1 bundle and the mode/n/migration assertions fail.
 import fs from 'node:fs'
 import vm from 'node:vm'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { El, Doc, buildSidebar, matchSelector, sbTimeout, sbInterval } from './dom-stub.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '')
-const client = fs.readFileSync(ROOT + '/lib/client.js', 'utf8')
-const index = fs.readFileSync(ROOT + '/lib/index.js', 'utf8')
+
+// Ask the runner itself which suites it discovers, so wiring assertions do not
+// go stale when suites are added or removed.
+function suiteList() {
+  const r = spawnSync(process.execPath, [ROOT + '/scripts/run-tests.mjs', '--list'], { encoding: 'utf8' })
+  return (r.stdout || '').split(/\r?\n/).filter(Boolean)
+}
+
+// Normalize line endings: several assertions below match an exact `\n` + indentation
+// sequence, and a Windows checkout with core.autocrlf=true hands out CRLF, which
+// would fail them even though the source is identical.
+const stripCr = (text) => text.replace(/\r\n/g, '\n')
+const client = stripCr(fs.readFileSync(ROOT + '/lib/client.js', 'utf8'))
+const index = stripCr(fs.readFileSync(ROOT + '/lib/index.js', 'utf8'))
 const pkg = JSON.parse(fs.readFileSync(ROOT + '/package.json', 'utf8'))
 const readme = fs.readFileSync(ROOT + '/README.md', 'utf8')
 const guide = fs.readFileSync(ROOT + '/使用说明.md', 'utf8')
@@ -141,9 +154,30 @@ async function main() {
     /out\.mode = normalizeMode\(raw\.mode\)/.test(client))
   check('0.5.0: the settings picker reads through normalizeMode',
     /return normalizeMode\(value && value\.mode\)/.test(client))
-  check('0.5.0: c has its own explicit branch', /else if \(state\.mode === 'c'\)/.test(client))
+  check('0.5.0: c has its own explicit branch',
+    /if \(state\.mode === 'c'\) return \{ ext: !runtime\.popOpen, ws: false \}/.test(client))
   check('0.5.0: the official default branch hides neither group',
-    /extHidden = false\s+wsHidden = false/.test(client))
+    /n -- official default[\s\S]{0,260}return \{ ext: false, ws: false \}/.test(client))
+  // 1.1.4 — the ⇄ action stopped being a full paint per click. The narrow
+  // path must stay narrow (it may only touch the tab flag, the two groups
+  // and the strip) and both callers must share one visibility rule, or the
+  // fast path can drift from paint().
+  check('1.1.4: the tab flip has its own narrow path',
+    /function applyTabView\(\) \{/.test(client) &&
+    /if \(field === 'tab' && applyTabView\(\)\) return/.test(client))
+  check('1.1.4: paint and the fast path share one group rule',
+    /var groups = groupVisibility\(state, hasExt, pluginTab\)/.test(client) &&
+    /var groups = groupVisibility\(state, !!fx\.nav, pluginTab\)/.test(client))
+  const applyTabBody = (client.match(/function applyTabView\(\) \{[\s\S]*?\n      \}/) || [''])[0]
+  check('1.1.4: applyTabView never runs the whole paint',
+    applyTabBody.length > 0 && !/scheduleSync\(|paint\(/.test(applyTabBody))
+  check('1.1.4: the ⇄ click coalesces its profile write',
+    /\n          toggleTab\(\)\n/.test(client) &&
+    /var TAB_WRITE_WINDOW_MS = 300/.test(client) &&
+    /function queueTabWrite\(value\) \{/.test(client) &&
+    /tabWriteQueued = value/.test(client))
+  check('1.1.4: a config echo of our own write skips the repaint',
+    /hint\.layoutFree === true && applyTabView\(\)\) return/.test(client))
   check('0.5.0: mode buttons use their own id as glyph',
     client.includes("modeButton.setAttribute('data-dsbs-glyph', mode)"))
   // 0.7.3: Cycle joined the action set so a visible Cycle button keeps the
@@ -169,7 +203,9 @@ async function main() {
   check('0.5.0: README documents the official default', /官方默认 \/ Default/.test(readme))
   check('0.5.0: the guide explains the a -> n migration',
     /mode: a/.test(guide) && /官方默认/.test(guide))
-  check('0.5.0: the test chain includes this suite', /test_036\.mjs/.test(pkg.scripts.test || ''))
+  check('0.5.0: the test chain includes this suite',
+    /scripts\/run-tests\.mjs/.test(pkg.scripts.test || '') &&
+    suiteList().includes('test_036.mjs'))
 
   // ---- 2. real bundle: the pill and the three modes ----------------------
   const loop = buildClient()

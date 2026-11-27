@@ -206,6 +206,13 @@ api.registerTab({ id: 'hello', title: { zh: '你好 v2', en: 'Hello v2' }, mount
 tabs = api.getTabs()
 check('reload: re-registering an id does not stack', tabs.filter((t) => t.id === 'hello').length === 1)
 check('reload: the newest descriptor wins', tabs.find((t) => t.id === 'hello').title === '你好 v2')
+// A hot reload replaces the record in place. The previous registration's
+// disposer is still held by the old plugin instance and may run after the
+// new record is live; it must not delete the replacement.
+disposeHello()
+check('reload: a stale disposer keeps the newest same-id record',
+  api.getTabs().some((t) => t.id === 'hello'),
+  JSON.stringify(api.getTabs()))
 // The sandbox has no sidebar, so nothing ever mounts here; the ordering that
 // matters (old panel torn down BEFORE the new record lands) is asserted on the
 // source, and the live behaviour is covered by the CDP check in CHANGELOG.
@@ -248,6 +255,9 @@ disposeFourth()
 check('dispose: calling it twice is harmless', !api.getTabs().some((t) => t.id === 'gone'))
 disposeSecond()
 disposeHello()
+// The stale disposer above is intentionally a no-op now; clean the current
+// record through the public API so a later registration count stays stable.
+api.unregisterTab('hello')
 
 // ---- layout probe --------------------------------------------------------
 const shape = api.getLayout()

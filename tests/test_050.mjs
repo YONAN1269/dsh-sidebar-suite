@@ -188,7 +188,9 @@ try {
   check('A6: hand-editing KEEP_DELETED=off is reflected without a restart',
     offList.keepDeleted === false && offList.keepDeletedDays === 3, offList)
 } finally {
-  fs.rmSync(HOME, { recursive: true, force: true })
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 // ---------------------------------------------------------------------------

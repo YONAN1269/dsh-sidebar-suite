@@ -32,6 +32,7 @@ Only these four categories are covered. Everything else — internal function na
 | `mode` | `b` / `c` / `n` | 启动默认布局：标签页 / 浮层 / 官方默认。旧值 `a` 会自动按 `n` 读取 |
 | `tab` | `ext` / `ws` | 标签页布局下先显示哪一组 |
 | `showQuickSwitch` | `true` / `false` | 是否在控制栏显示「换布局」按钮（默认 `false`） |
+| `focusOnLaunch` | `true` / `false` | 启动完成时把被其它应用盖住的主窗口恢复并置前一次（1.1.3 追加；默认 `false`，仅 Windows，写入插件自己的配置表单，不在 `temp-session-config.txt`） |
 
 ### 2.2 临时会话配置（`~/.dsh/dsh-sidebar-suite/temp-session-config.txt`，11 个键）
 
@@ -76,19 +77,35 @@ In 1.x we may **add** methods or **add** fields to return values, but never remo
 | `.list` | GET | 当前临时会话列表 |
 | `.probe` | GET | 自检 |
 | `.paths` | GET | 展示用路径 |
-| `.config` | GET / POST | 读写配置 |
+| `.config` | GET / POST | 读写配置（POST 请求体上限 16KB，超限返回 413） |
 | `.track` | POST | 登记一个临时会话 |
 | `.untrack` | POST | 取消登记 |
-| `.keep-all` | POST | 全部转正 |
+| `.keep-all` | POST | 全部转正（1.1.5 起客户端两步确认：首击进入准备态、5 秒内二次点击才发起；路由与响应形状不变） |
 | `.remove` | POST | 删除一个 |
 | `.purge` | POST | 清理 |
-| `.trash` | GET | 回收站列表 |
+| `.trash` | GET | 回收站列表（只读；列表本身不触发修剪） |
 | `.trash-restore` | POST | 从回收站恢复 |
 | `.trash-delete` | POST | 从回收站彻底删除 |
 | `.trash-empty` | POST | 清空回收站 |
 
-**承诺**：改状态的接口一律 **POST**（GET 绝不产生副作用）；响应统一形如 `{ ok: true, … }` 或 `{ ok: false, error }`。1.x 内不删除路由、不把 POST 改成 GET、不改变 `ok` 的形状。
-State-changing routes are POST-only and always answer `{ ok, … }` / `{ ok: false, error }`; this shape holds through 1.x.
+**承诺**：改状态的接口一律 **POST**（GET 绝不产生副作用）；响应统一形如 `{ ok: true, … }` 或 `{ ok: false, error }`。1.x 内不删除路由、不把 POST 改成 GET、不改变 `ok` 的形状。`.trash` GET 只返回列表，不触发保留期 / 容量修剪；到期与超上限条目的清理由启动引导与定时调度执行，不在列列表时顺手清理。
+State-changing routes are POST-only and always answer `{ ok, … }` / `{ ok: false, error }`; this shape holds through 1.x. The `.trash` GET lists entries only — it never prunes; retention passes run on startup bootstrap and on the scheduled timer.
+
+### 4.1 1.1.x 追加的内部路由 / Internal routes added in 1.1.x
+
+下列路由随 1.1.0 / 1.1.3 / 1.1.5 追加，**属于插件内部使用，暂不列入 §1 的稳定性承诺**；路径、方法与响应形状在后续 1.x 仍可能为修 bug 或改体验而调整。此处列出仅为说明本插件实际注册了哪些 Host 接口，消费方插件不应直接调用。
+
+| 路由 | 方法 | 用途 | 追加版本 |
+| --- | --- | --- | --- |
+| `/api/dsh-sidebar-suite.web-login-load` | GET | 读取某网页（`chat` / `api`）的登录快照 | 1.1.0 |
+| `/api/dsh-sidebar-suite.web-login-save` | POST | 保存某网页的登录快照（请求体上限 128KB，超限返回 413） | 1.1.0 |
+| `/api/dsh-sidebar-suite.web-login-clear` | POST | 清除某网页的登录快照 | 1.1.0 |
+| `/api/dsh-sidebar-suite.focus-window` | POST | Windows-only，启动或「立即试一次」时恢复并置前主窗口；目标 PID 只取 Host 进程父进程链，请求体不能指定 PID | 1.1.3 |
+| `/api/dsh-sidebar-suite.update-check` | GET | 只读，向 npm 查询最新版本号，不带本机参数；不跟随重定向、限制响应体大小，版本比较区分预发布版 | 1.1.5 |
+
+**1.1.x 行为说明（`web-login-save`）**：凭据服务不可用或写入失败时，`POST /api/dsh-sidebar-suite.web-login-save` 返回 **HTTP 200**，body 为 `{ ok:false, reason:'credentials-unavailable', savedAt }`，不写明文条目；正常成功仍返回 `{ ok:true, savedAt, source, count }`。
+
+这些内部路由与上面 §4 的 14 条 `dsh-temp-session.*` 路由不同：后者属于承诺范围，上表五条不在。
 
 ---
 
@@ -106,6 +123,8 @@ State-changing routes are POST-only and always answer `{ ok, … }` / `{ ok: fal
 | `data-dsbs-ptab` | `true` | 是否有插件页签正占用该列 |
 | `data-dsbs-expand-all` | `true` | 会话默认全展开是否生效 |
 | `data-dsbs-temp-mode` | `slot` / `dom` | 「临时」按钮走宿主插槽还是旧 DOM 路径 |
+
+另外，会话收藏状态存在 renderer `localStorage` 的 `dsh-sidebar-suite:favorites.v1`（1.1.5 追加，按当前 profile 保存，不跨设备同步）；这是 renderer 侧存储键，不是 `<html>` 状态属性，同样不在承诺范围内。
 
 ---
 

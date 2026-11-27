@@ -242,7 +242,9 @@ try {
     metaOf(priorKey))
   check('A6: the original directory is gone', !fs.existsSync(syncDir))
 } finally {
-  fs.rmSync(HOME, { recursive: true, force: true })
+  process.removeAllListeners('exit')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) }
+  catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
 }
 
 // ---------------------------------------------------------------------------

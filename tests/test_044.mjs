@@ -55,6 +55,8 @@ try {
 } catch (error) {
   console.log('SKIP  linked workspace setup not supported: ' + (error && error.message))
   console.log('\n0 passed, 0 failed')
+  try { fs.rmSync(HOME, { recursive: true, force: true }) } catch (e) { void e }
+  try { fs.rmSync(OUTSIDE, { recursive: true, force: true }) } catch (e) { void e }
   process.exit(0)
 }
 
@@ -65,6 +67,7 @@ fs.writeFileSync(
 )
 
 async function main() {
+  try {
   const mod = await import(HOST + '?v044=' + Date.now())
   const host = mod.createTempSessionHost(null)
   // The host reads its config on the first status/route call; force that here
@@ -115,6 +118,10 @@ async function main() {
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail > 0) process.exitCode = 1
+  } finally {
+    try { fs.rmSync(HOME, { recursive: true, force: true }) } catch (error) { void error }
+    try { fs.rmSync(OUTSIDE, { recursive: true, force: true }) } catch (error) { void error }
+  }
 }
 
 main().catch((error) => {

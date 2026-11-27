@@ -61,6 +61,7 @@ function makeEffectCtx() {
 }
 
 async function main() {
+  try {
   // ---- 1. scheduler effect follows the CURRENT ctx ------------------------
   const mod = await import(HOST + '?v043=' + Date.now())
   const host = mod.createTempSessionHost(null)
@@ -100,7 +101,7 @@ async function main() {
     (CLIENT_SRC.match(/clearTimeout\(timer\)/g) || []).length >= 2)
 
   check('setField: remembers the previous value',
-    CLIENT_SRC.includes('var previous = config.values[field]') &&
+    CLIENT_SRC.includes("var previous = field === 'tab' ? tabConfirmed : config.values[field]") &&
     CLIENT_SRC.includes('rollbackPatch[field] = previous'))
   check('setField: a failed mutate rolls back',
     /config\.values = assign\(\{\}, config\.values, rollbackPatch\)/.test(CLIENT_SRC))
@@ -135,6 +136,11 @@ async function main() {
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail > 0) process.exitCode = 1
+  } finally {
+    process.removeAllListeners('exit')
+    try { fs.rmSync(HOME, { recursive: true, force: true }) }
+    catch (error) { console.error('CLEANUP_FAIL ' + HOME + ' ' + error.code + ' ' + error.message) }
+  }
 }
 
 main().catch((error) => {

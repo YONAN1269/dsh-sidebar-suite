@@ -124,8 +124,11 @@ async function main() {
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed')
   if (fail > 0) process.exitCode = 1
-  fs.rmSync(HOME, { recursive: true, force: true })
-  fs.rmSync(OUTSIDE, { recursive: true, force: true })
+  process.removeAllListeners('exit')
+  for (const dir of [HOME, OUTSIDE]) {
+    try { fs.rmSync(dir, { recursive: true, force: true }) }
+    catch (error) { console.error('CLEANUP_FAIL ' + dir + ' ' + error.code + ' ' + error.message) }
+  }
 }
 
 main().catch((error) => {
