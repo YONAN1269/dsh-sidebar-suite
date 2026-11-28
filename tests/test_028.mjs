@@ -135,7 +135,10 @@ const detail = readFileSync(ROOT + '/DETAIL.md', 'utf8')
 const guide = readFileSync(ROOT + '/使用说明.md', 'utf8')
 const changelog = readFileSync(ROOT + '/CHANGELOG.md', 'utf8')
 
-check('config: header no longer demands a restart', /0\.2\.8/.test(cfg) && !/FULLY QUIT and reopen/.test(cfg))
+// Review fix: the header dropped its "(0.2.8)" version marker — a stale
+// number that read like the file's own format version. The contract is what
+// the header must and must not say, not which version tag it carries.
+check('config: header no longer demands a restart', !/FULLY QUIT and reopen/.test(cfg))
 check('config: header explains the ~3s hot reload', /3 秒自动生效/.test(cfg) && /no restart/.test(cfg))
 check('config: all eight keys are still present',
   ['SHOW_TEMP_BUTTON', 'TEMP_IN_CHAT_MODE', 'TEMP_BUTTON_STYLE', 'EXPAND_ALL_SESSIONS',

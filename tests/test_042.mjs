@@ -109,7 +109,10 @@ try {
   check('source: an archiveSession refusal is reported honestly',
     /return archived !== false/.test(HOST_SRC))
   check('source: the projection cache only goes after a real delete',
-    /if \(removed > 0\) \{[\s\S]{0,140}?rm\(projectionCacheFile/.test(HOST_SRC))
+    // 1.1.6: removeSession renamed its counter to `moved` and now answers
+    // `{ moved }`; the contract (cache deleted only after a real delete) is
+    // unchanged.
+    /if \(moved > 0\) \{[\s\S]{0,140}?rm\(projectionCacheFile/.test(HOST_SRC))
   check('source: session ids may not contain a colon (NTFS streams)',
     /const SESSION_ID_PATTERN = \/\^\[A-Za-z0-9\._-\]\+\$\//.test(HOST_SRC))
   check('source: a zombie is counted apart from a real delete',

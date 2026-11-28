@@ -88,7 +88,11 @@ try {
   check('exit-on: purgeOnExit deletes when DELETE_ON_EXIT=on',
     doReport && doReport.removed >= 1 && !fs.existsSync(keepDir), JSON.stringify(doReport))
   check('exit-on: source exit hook routes through purgeOnExit',
-    /process\.once\('exit',[\s\S]{0,160}?purgeOnExit\(\)/.test(HOST_SRC))
+    // Review fix: the install is now process-global idempotent (a reload
+    // replaces the previous instance's handler), so the wiring is
+    // handler → wrapped → process.once instead of a direct inline purge.
+    /const handler = \(\) => \{[\s\S]{0,80}?purgeOnExit\(\)/.test(HOST_SRC) &&
+    /process\.once\('exit', wrapped\)/.test(HOST_SRC))
   a.host.state.tracked = []
 
   // ---- #2: a failed store write is reported, not swallowed -------------
@@ -113,7 +117,9 @@ try {
   // (per-write temp name, corrupt-file backup, rename fallback), so assert the
   // contract rather than the exact shape: a function that returns true on
   // success and false out of its catch.
-  const saveStoreSrc = (HOST_SRC.split('async function saveStore()')[1] || '').split('\n}\n')[0]
+  // 1.1.6: the write body moved into saveStoreNow() (saveStore() is now the
+  // serialization wrapper); the boolean contract lives in the body unchanged.
+  const saveStoreSrc = (HOST_SRC.split('async function saveStoreNow()')[1] || '').split('\n}\n')[0]
   check('write-fail: saveStore returns a boolean on both paths',
     /return true/.test(saveStoreSrc) && /return false/.test(saveStoreSrc))
   // Restore the data dir so the finally cleanup and later sections work.

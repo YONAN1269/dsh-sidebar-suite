@@ -162,10 +162,22 @@ function rule(selector) {
   }
 }
 
-// ---- PD-11: no stale 1.1.6 version comment in the bundle ----------------
+// ---- PD-11: no stale next-version comment in the bundle -----------------
 {
-  check('PD11: client.js no longer mentions 1.1.6', SRC.indexOf('1.1.6') < 0)
-  check('PD11: the bundle version is 1.1.5', SRC.indexOf("var VERSION = '1.1.5'") >= 0)
+  check('PD11: client.js no longer mentions 1.1.7', SRC.indexOf('1.1.7') < 0)
+  check('PD11: the bundle version is 1.1.6', SRC.indexOf("var VERSION = '1.1.6'") >= 0)
+}
+
+// ---- PD-12: the settings page subscribes even when configForms is late ---
+// Review fix: the mount-time subscribe used to give up for the component's
+// lifetime when the controller had not come up yet, leaving the highlighted
+// layout card on a stale default. The effect now retries once a second and
+// re-seeds the moment the controller appears.
+{
+  check('PD12: the mode/focus subscribe retries until the controller appears',
+    SRC.indexOf('window.setTimeout(attempt, 1000)') >= 0)
+  check('PD12: the subscribe effect re-seeds after subscribing',
+    /off = controller\.subscribe\(function \(\) \{[\s\S]{0,80}?\}\)[\s\S]{0,80}adopt\(\)/.test(SRC))
 }
 
 // ---- R-16: clear-login copy in both dictionaries -------------------------

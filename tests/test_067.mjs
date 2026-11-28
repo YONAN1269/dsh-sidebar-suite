@@ -35,6 +35,17 @@ async function get(route) {
 async function main() {
   check('U1: dotted versions compare numerically', compareVersions('1.1.10', '1.1.4') > 0 && compareVersions('1.1.4', '1.1.4') === 0 && compareVersions('1.1.4', '1.1.5') < 0)
   check('U2: invalid versions do not claim an update', compareVersions('not-a-version', '1.1.4') === 0)
+  // Review fix: prerelease identifiers order by semver, not by text. The old
+  // string comparison put "rc.10" below "rc.2", so a real rc.10 update was
+  // reported as "already latest".
+  check('U3: numeric prerelease identifiers compare numerically',
+    compareVersions('1.2.0-rc.10', '1.2.0-rc.2') > 0 && compareVersions('1.2.0-rc.2', '1.2.0-rc.10') < 0)
+  check('U4: a numeric identifier loses to an alphanumeric one',
+    compareVersions('1.2.0-1', '1.2.0-alpha') < 0)
+  check('U5: a shorter prerelease list loses on a tied prefix',
+    compareVersions('1.2.0-rc', '1.2.0-rc.1') < 0 && compareVersions('1.2.0-rc.1.1', '1.2.0-rc.1') > 0)
+  check('U6: a stable release still outranks its own prereleases',
+    compareVersions('1.2.0', '1.2.0-rc.99') > 0 && compareVersions('1.2.0-rc.1', '1.2.0') < 0)
 
   const calls = []
   const host = createUpdateHost(null, {

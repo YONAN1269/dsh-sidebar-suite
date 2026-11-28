@@ -399,6 +399,77 @@ async function main() {
       'html tab=' + h.doc.documentElement.getAttribute('data-dsbs-tab'))
   }
 
+  // ---- A1l · an older echo mid-window must not repaint the flip ---------
+  // Review fix: with three rapid clicks, the leading write's success push can
+  // land between the last click's optimistic flip and its queued commit.
+  // syncFromController() adopted the echoed (older) tab wholesale and the
+  // column bounced back to the pre-click group until the trailing commit.
+  {
+    const h = mount({ initial: { tab: 'ext' } })
+    await settle()
+    // Click 1: the window is idle, so this is the leading write (ws).
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+    await new Promise((r) => setTimeout(r, 60))
+    await settle()
+    check('A1l setup: the leading write persisted ws',
+      h.forms.value().tab === 'ws', 'stored tab=' + h.forms.value().tab)
+    // Click 2 inside the 300ms window: optimistic ext, write queued.
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="tab-swap"]')
+    // An older echo (a duplicate of the leading write's success push) arrives
+    // before the trailing commit. It carries ws — the pre-click group.
+    h.forms.controller.mutate([{ op: 'set', path: ['tab'], value: 'ws' }])
+    await settle()
+    check('A1l: the optimistic tab survives an older echo mid-window',
+      h.doc.documentElement.getAttribute('data-dsbs-tab') === 'ext',
+      'html tab=' + h.doc.documentElement.getAttribute('data-dsbs-tab'))
+    // The trailing commit lands and the clicked group is both visible and
+    // persisted.
+    await new Promise((r) => setTimeout(r, 500))
+    await settle()
+    check('A1m: the trailing commit persists the clicked tab',
+      h.forms.value().tab === 'ext', 'stored tab=' + h.forms.value().tab)
+    check('A1n: the visible tab agrees with the persisted tab after the commit',
+      h.doc.documentElement.getAttribute('data-dsbs-tab') === 'ext',
+      'html tab=' + h.doc.documentElement.getAttribute('data-dsbs-tab'))
+  }
+
+  // ---- A1o · the first push must not wipe a late session-mode pick ------
+  // Review fix: configMode stays null until the controller's first snapshot
+  // arrives (late configForms). A layout picked from the bar inside that
+  // window was overwritten by the profile value on the first push, because
+  // sessionMode was only re-applied when configMode already matched.
+  {
+    const h = mount({ initial: { mode: 'b' } })
+    // The controller is not ready on the first read: make its very first
+    // snapshot throw, so tryAdopt cannot set configMode at boot.
+    const realSnapshot = h.forms.controller.getSnapshot.bind(h.forms.controller)
+    let notReady = true
+    h.forms.controller.getSnapshot = () => {
+      if (notReady) throw new Error('config service not ready')
+      return realSnapshot()
+    }
+    await settle()
+    // The user picks a layout from the bar while the controller is down.
+    h.click('[data-dsbs-bar] button[data-dsbs-btn="mode-c"]')
+    await settle()
+    check('A1o setup: the bar pick paints before the controller arrives',
+      h.doc.documentElement.getAttribute('data-dsbs-mode') === 'c',
+      'html mode=' + h.doc.documentElement.getAttribute('data-dsbs-mode'))
+    // The controller comes up; its first push carries the profile value b.
+    notReady = false
+    h.forms.controller.mutate([{ op: 'set', path: ['mode'], value: 'b' }])
+    await settle()
+    check('A1o: the first push keeps the session pick over the profile value',
+      h.doc.documentElement.getAttribute('data-dsbs-mode') === 'c',
+      'html mode=' + h.doc.documentElement.getAttribute('data-dsbs-mode'))
+    // A genuine external change (a different profile mode) still wins.
+    h.forms.controller.mutate([{ op: 'set', path: ['mode'], value: 'n' }])
+    await settle()
+    check('A1p: a genuine external mode change still takes over',
+      h.doc.documentElement.getAttribute('data-dsbs-mode') === 'n',
+      'html mode=' + h.doc.documentElement.getAttribute('data-dsbs-mode'))
+  }
+
   // ---- A3 · a repaint must not sweep the session list (1.1.4) -----------
   // The expand pass is a whole-document query plus one host click per folded
   // group, and every click re-renders the tree. It used to run inside every
